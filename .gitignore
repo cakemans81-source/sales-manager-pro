@@ -1,6 +1,12 @@
 .vercel
 node_modules/
 dist/
+.env
 .env.local
-Global Plly Master/
+.env.pull
+.env.prod.pull
+.env*.pull
+.mcp.json
+.claude/
 mcp-debug.log
+Global Plly Master/
