@@ -960,13 +960,15 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
         { header: '금액', key: 'amount', width: 16, style: { numFmt: '#,##0' } },
         { header: '견적서 PDF', key: 'quotePdf', width: 20 },
         { header: '메일 PDF', key: 'mailPdf', width: 20 },
-        { header: '제품 사진 링크', key: 'photos', width: 40 },
+        { header: '제품 사진 1', key: 'photo1', width: 20 },
+        { header: '제품 사진 2', key: 'photo2', width: 20 },
+        { header: '제품 사진 3', key: 'photo3', width: 20 },
       ];
 
       // 헤더 스타일: 셀 레벨로 직접 적용 (row-level fill이 이후 row에 상속되는 버그 방지)
       const headerRow = worksheet.getRow(1);
       headerRow.height = 28;
-      for (let ci = 1; ci <= 17; ci++) {
+      for (let ci = 1; ci <= 19; ci++) {
         const hc = headerRow.getCell(ci);
         hc.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } };
         hc.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
@@ -993,6 +995,20 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
           ? item.finalProductPhotos.join('\n')
           : '';
 
+        // 사진 base64 변환 헬퍼
+        const toBase64 = async (url) => {
+          try {
+            const res = await fetch(url);
+            if (!res.ok) return null;
+            const blob = await res.blob();
+            return await new Promise((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result.split(',')[1]);
+              reader.readAsDataURL(blob);
+            });
+          } catch { return null; }
+        };
+
         // 교대 배경색: 흰색(짝수) / 아주 연한 회색(홀수) → 가독성 우선
         const rowBg = i % 2 === 0 ? 'FFFFFFFF' : 'FFF5F7FA';
 
@@ -1013,7 +1029,9 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
           amount: item.discountAmount && Number(item.discountAmount) > 0 ? Number(item.discountAmount) : (Number(item.estimateAmount) || 0),
           quotePdf: item.quotePdfUrl ? item.quotePdfUrl : '',
           mailPdf: item.mailPdfUrl ? item.mailPdfUrl : '',
-          photos: photoUrls,
+          photo1: '',
+          photo2: '',
+          photo3: '',
         });
 
         row.height = 24;
@@ -1029,7 +1047,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
         row.fill = rowFill;   // 행 전체 기본 배경 (모든 미작성 셀 포함)
 
         // ── 컬럼 인덱스(1-based)로 직접 접근하여 셀 레벨 fill 재확인 ──
-        for (let colIdx = 1; colIdx <= 17; colIdx++) {
+        for (let colIdx = 1; colIdx <= 19; colIdx++) {
           const c = row.getCell(colIdx);
           c.fill = rowFill;
           c.font = rowFont;
@@ -1078,17 +1096,41 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
           cell.alignment = { vertical: 'middle', horizontal: 'center' };
         }
 
-        // 사진 링크
+        // 제품 사진: 셀에 이미지 삽입
         if (Array.isArray(item.finalProductPhotos) && item.finalProductPhotos.length > 0) {
-          const cell = row.getCell('photos');
-          if (item.finalProductPhotos.length === 1) {
-            cell.value = { text: `사진 1장 열기`, hyperlink: item.finalProductPhotos[0] };
-            cell.font = { color: { argb: 'FF0070C0' }, underline: true, size: 9 };
-          } else {
-            cell.value = `사진 ${item.finalProductPhotos.length}장\n` + item.finalProductPhotos.join('\n');
-            cell.font = { color: { argb: 'FF0070C0' }, size: 9 };
+          const photoKeys = ['photo1', 'photo2', 'photo3'];
+          const photosToEmbed = item.finalProductPhotos.slice(0, 3);
+          const ROW_H_PX = 90;   // 이미지 높이(px 근사)
+          row.height = 68;       // ExcelJS 행 높이(pt 근사)
+
+          for (let pi = 0; pi < photosToEmbed.length; pi++) {
+            const photoUrl = photosToEmbed[pi];
+            const colKey = photoKeys[pi];
+            const colObj = worksheet.getColumn(colKey);
+            const colNum = colObj.number; // 1-based
+
+            // 셀 배경 및 폴백 링크 설정
+            const photoCell = row.getCell(colKey);
+            photoCell.fill = rowFill;
+            photoCell.alignment = { vertical: 'middle', horizontal: 'center' };
+
+            const base64 = await toBase64(photoUrl);
+            if (base64) {
+              const ext = photoUrl.split('?')[0].split('.').pop().toLowerCase();
+              const imgType = ext === 'png' ? 'png' : ext === 'gif' ? 'gif' : 'jpeg';
+              const imageId = workbook.addImage({ base64, extension: imgType });
+              // 셀 위치: row는 i+1(헤더 제외, 0-indexed tl.row)
+              worksheet.addImage(imageId, {
+                tl: { col: colNum - 1, row: i + 1 },
+                br: { col: colNum, row: i + 2 },
+                editAs: 'oneCell',
+              });
+            } else {
+              // fetch 실패 시 하이퍼링크 폴백
+              photoCell.value = { text: `사진${pi + 1} 열기`, hyperlink: photoUrl };
+              photoCell.font = { color: { argb: 'FF0070C0' }, underline: true, size: 9 };
+            }
           }
-          cell.alignment = { vertical: 'middle', wrapText: true };
         }
       }
 
