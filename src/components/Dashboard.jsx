@@ -22,7 +22,6 @@ import SettingsTab from './dashboard/SettingsTab';
 import ProjectModal from './dashboard/ProjectModal';
 import PDFReportTemplate from './dashboard/PDFReportTemplate';
 import KanbanTab from './dashboard/KanbanTab';
-import AIInsights from './dashboard/AIInsights';
 import CustomerRevenueChart from './dashboard/CustomerRevenueChart';
 import QuotationHelperTab from './dashboard/QuotationHelperTab';
 import ContactsTab from './dashboard/ContactsTab';
@@ -128,7 +127,6 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
   const initialLayouts = {
     lg: [
       { i: 'warnings', x: 0, y: 0, w: 6, h: 6 },
-      { i: 'aiInsights', x: 6, y: 0, w: 6, h: 6 },
       { i: 'distribution', x: 0, y: 6, w: 7, h: 7 },
       { i: 'activity', x: 7, y: 6, w: 5, h: 7 },
       { i: 'trends', x: 0, y: 13, w: 12, h: 10 },
@@ -1411,19 +1409,6 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
                     </div>
                   )}
                   <ZeroEstimateWarning salesData={companySalesData} onEdit={openEditModal} />
-                </div>
-              </div>
-              <div key="aiInsights">
-                <div style={{ height: '100%', position: 'relative', overflow: 'auto', borderRadius: '16px' }}>
-                  {user.role === 'admin' && !isLayoutLocked && (
-                    <div className="edit-mode-overlay">
-                      <div className="admin-draggable-handle is-active" style={{ position: 'absolute', top: 0, left: 0, background: '#f59e0b' }}>
-                        <GripVertical size={16} />
-                      </div>
-                      <span className="edit-guide-text">이동 및 크기 조절 중...</span>
-                    </div>
-                  )}
-                  <AIInsights salesData={companySalesData} yearlyTargets={yearlyTargets} displayYear={Math.max(...selectedYears)} />
                 </div>
               </div>
               <div key="distribution">
