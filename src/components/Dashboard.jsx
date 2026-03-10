@@ -995,34 +995,22 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
           ? item.finalProductPhotos.join('\n')
           : '';
 
-        // 사진 base64 변환 헬퍼 (Canvas 방식 - CORS 우회)
+        // 사진 base64 변환 헬퍼 (fetch 방식 - public 버킷용)
         const toBase64 = (url) => new Promise((resolve) => {
-          // 방법1: fetch (public 버킷)
-          fetch(url)
-            .then(res => res.ok ? res.blob() : Promise.reject())
+          fetch(url, { mode: 'cors' })
+            .then(res => {
+              if (!res.ok) { resolve(null); return; }
+              return res.blob();
+            })
             .then(blob => {
+              if (!blob) { resolve(null); return; }
               const reader = new FileReader();
               reader.onloadend = () => resolve(reader.result.split(',')[1]);
               reader.readAsDataURL(blob);
             })
-            .catch(() => {
-              // 방법2: Canvas + crossOrigin (서명된 URL 등)
-              const img = new Image();
-              img.crossOrigin = 'anonymous';
-              img.onload = () => {
-                try {
-                  const canvas = document.createElement('canvas');
-                  canvas.width = img.naturalWidth;
-                  canvas.height = img.naturalHeight;
-                  canvas.getContext('2d').drawImage(img, 0, 0);
-                  const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-                  resolve(dataUrl.split(',')[1]);
-                } catch { resolve(null); }
-              };
-              img.onerror = () => resolve(null);
-              img.src = url + (url.includes('?') ? '&' : '?') + '_t=' + Date.now();
-            });
+            .catch(() => resolve(null));
         });
+
 
         // 교대 배경색: 흰색(짝수) / 아주 연한 회색(홀수) → 가독성 우선
         const rowBg = i % 2 === 0 ? 'FFFFFFFF' : 'FFF5F7FA';
