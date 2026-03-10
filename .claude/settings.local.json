@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__notebooklm__get_health",
+      "mcp__Stitch__list_projects",
+      "mcp__notebooklm__get_library_stats",
+      "mcp__Stitch__create_project",
+      "mcp__Stitch__generate_screen_from_text"
+    ]
+  }
+}

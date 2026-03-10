@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "Stitch": {
+      "command": "node",
+      "args": [
+        "C:/Users/user/Desktop/AI 툴/연구자동화에이전트들/mcp-wrapper.js",
+        "C:/Users/user/Desktop/AI 툴/연구자동화에이전트들/node_modules/.bin/stitch-mcp.cmd",
+        "proxy"
+      ],
+      "env": {
+        "STITCH_API_KEY": "AQ.Ab8RN6K1lXVtUuCef_YUTdyBhowkXduoiXVp-53Inc_1QkOCTA"
+      }
+    },
+    "notebooklm": {
+      "command": "node",
+      "args": [
+        "C:/Users/user/Desktop/AI 툴/연구자동화에이전트들/mcp-wrapper.js",
+        "C:/Users/user/Desktop/AI 툴/연구자동화에이전트들/node_modules/.bin/notebooklm-mcp.cmd"
+      ]
+    }
+  }
+}
