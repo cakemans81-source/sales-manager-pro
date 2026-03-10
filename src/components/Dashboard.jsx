@@ -473,7 +473,13 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
     try {
       if (supabase) {
         const payload = { ...fullData };
+        // 신규 등록 시 id 제거
         if (!editingItemId) delete payload.id;
+        // Supabase 스키마에 없는 프론트엔드 전용 필드 제거
+        delete payload.isStarred;       // DB 컬럼명은 is_starred
+        delete payload.imageMail;       // 레거시 base64 필드
+        delete payload.imageEstimate;   // 레거시 base64 필드
+        delete payload.imageProduct;    // 레거시 base64 필드
 
         const { error } = editingItemId
           ? await supabase.from('sales_data').update(payload).eq('id', editingItemId)
