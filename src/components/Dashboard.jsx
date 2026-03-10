@@ -1099,41 +1099,17 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
           cell.alignment = { vertical: 'middle', horizontal: 'center' };
         }
 
-        // 제품 사진: 셀에 이미지 삽입
+        // 제품 사진: 하이퍼링크로 삽입 (최대 3장)
         if (Array.isArray(item.finalProductPhotos) && item.finalProductPhotos.length > 0) {
           const photoKeys = ['photo1', 'photo2', 'photo3'];
-          const photosToEmbed = item.finalProductPhotos.slice(0, 3);
-          const ROW_H_PX = 90;   // 이미지 높이(px 근사)
-          row.height = 68;       // ExcelJS 행 높이(pt 근사)
-
-          for (let pi = 0; pi < photosToEmbed.length; pi++) {
-            const photoUrl = photosToEmbed[pi];
-            const colKey = photoKeys[pi];
-            const colObj = worksheet.getColumn(colKey);
-            const colNum = colObj.number; // 1-based
-
-            // 셀 배경 및 폴백 링크 설정
-            const photoCell = row.getCell(colKey);
-            photoCell.fill = rowFill;
+          const photosToShow = item.finalProductPhotos.slice(0, 3);
+          photosToShow.forEach((photoUrl, pi) => {
+            const photoCell = row.getCell(photoKeys[pi]);
+            photoCell.value = { text: `클릭하면 사진${pi + 1} 열기`, hyperlink: photoUrl };
+            photoCell.font = { color: { argb: 'FF0070C0' }, underline: true, size: 9, bold: true };
+            photoCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: pi === 0 ? 'FFE8F4FD' : pi === 1 ? 'FFEAF7EA' : 'FFFFF3E0' } };
             photoCell.alignment = { vertical: 'middle', horizontal: 'center' };
-
-            const base64 = await toBase64(photoUrl);
-            if (base64) {
-              const ext = photoUrl.split('?')[0].split('.').pop().toLowerCase();
-              const imgType = ext === 'png' ? 'png' : ext === 'gif' ? 'gif' : 'jpeg';
-              const imageId = workbook.addImage({ base64, extension: imgType });
-              // 셀 위치: row는 i+1(헤더 제외, 0-indexed tl.row)
-              worksheet.addImage(imageId, {
-                tl: { col: colNum - 1, row: i + 1 },
-                br: { col: colNum, row: i + 2 },
-                editAs: 'oneCell',
-              });
-            } else {
-              // fetch 실패 시 하이퍼링크 폴백
-              photoCell.value = { text: `사진${pi + 1} 열기`, hyperlink: photoUrl };
-              photoCell.font = { color: { argb: 'FF0070C0' }, underline: true, size: 9 };
-            }
-          }
+          });
         }
       }
 
