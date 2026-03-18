@@ -130,11 +130,11 @@ const DeliveryNoteDocument = ({ formData, items, issueDate }) => {
             <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '6px', fontSize: '9.5px' }}>
                 <thead>
                     <tr style={{ background: color, color: '#fff' }}>
-                        {['No', '품목 / 서비스 내용', '수량', '단가 (원)', '금액 (원)', '비고'].map((h, i) => (
+                        {['No', '납품날짜', '품목 / 서비스 내용', '수량', '단가 (원)', '금액 (원)', '비고'].map((h, i) => (
                             <th key={h} style={{
                                 padding: '4px 6px', textAlign: 'center', fontWeight: '800',
                                 borderRight: '1px solid rgba(255,255,255,0.3)',
-                                width: i === 0 ? '4%' : i === 1 ? '38%' : i === 5 ? '12%' : '14%',
+                                width: i === 0 ? '4%' : i === 1 ? '13%' : i === 2 ? '28%' : i === 6 ? '10%' : '12%',
                             }}>{h}</th>
                         ))}
                     </tr>
@@ -145,6 +145,7 @@ const DeliveryNoteDocument = ({ formData, items, issueDate }) => {
                         return (
                             <tr key={idx} style={{ borderBottom: '1px solid #e5e7eb', background: idx % 2 === 0 ? '#fff' : '#fafafa' }}>
                                 <td style={{ padding: '4px 6px', textAlign: 'center', borderRight: '1px solid #e5e7eb', color: '#777' }}>{idx + 1}</td>
+                                <td style={{ padding: '4px 6px', textAlign: 'center', borderRight: '1px solid #e5e7eb', color: '#444' }}>{item.deliveryDate || ''}</td>
                                 <td style={{ padding: '4px 8px', borderRight: '1px solid #e5e7eb' }}>{item.name || ''}</td>
                                 <td style={{ padding: '4px 6px', textAlign: 'center', borderRight: '1px solid #e5e7eb' }}>{item.qty || ''}</td>
                                 <td style={{ padding: '4px 6px', textAlign: 'right', borderRight: '1px solid #e5e7eb' }}>{item.unitPrice ? formatKRW(item.unitPrice) : ''}</td>
@@ -156,7 +157,7 @@ const DeliveryNoteDocument = ({ formData, items, issueDate }) => {
                     {/* 빈 행 채우기 (최소 5행 보장) */}
                     {Array.from({ length: Math.max(0, 5 - items.length) }).map((_, i) => (
                         <tr key={`empty-${i}`} style={{ borderBottom: '1px solid #e5e7eb', height: '20px' }}>
-                            {Array(6).fill(null).map((__, j) => (
+                            {Array(7).fill(null).map((__, j) => (
                                 <td key={j} style={{ borderRight: '1px solid #e5e7eb' }}>&nbsp;</td>
                             ))}
                         </tr>
@@ -256,13 +257,14 @@ const DeliveryNoteModal = ({ formData, onClose }) => {
         const amount = formData.discountAmount > 0 ? formData.discountAmount : (formData.estimateAmount || 0);
         return [{
             name: formData.project || '',
+            deliveryDate: '',
             qty: 1,
             unitPrice: amount,
             note: '',
         }];
     });
 
-    const addItem = () => setItems(prev => [...prev, { name: '', qty: 1, unitPrice: 0, note: '' }]);
+    const addItem = () => setItems(prev => [...prev, { name: '', deliveryDate: '', qty: 1, unitPrice: 0, note: '' }]);
     const removeItem = (idx) => setItems(prev => prev.filter((_, i) => i !== idx));
     const updateItem = (idx, field, value) => {
         setItems(prev => prev.map((item, i) => i === idx ? { ...item, [field]: value } : item));
@@ -379,7 +381,7 @@ const DeliveryNoteModal = ({ formData, onClose }) => {
                                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
                                         <thead>
                                             <tr style={{ background: `${color}22` }}>
-                                                {['품목 / 내용', '수량', '단가 (원)', '금액', '비고', ''].map(h => (
+                                                {['납품날짜', '품목 / 내용', '수량', '단가 (원)', '금액', '비고', ''].map(h => (
                                                     <th key={h} style={{ padding: '7px 8px', color: color, fontWeight: '800', textAlign: h === '금액' || h === '단가 (원)' ? 'right' : 'left', whiteSpace: 'nowrap', borderBottom: `1px solid ${color}33` }}>{h}</th>
                                                 ))}
                                             </tr>
@@ -387,6 +389,14 @@ const DeliveryNoteModal = ({ formData, onClose }) => {
                                         <tbody>
                                             {items.map((item, idx) => (
                                                 <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                                    <td style={{ padding: '5px 6px', width: '110px' }}>
+                                                        <input
+                                                            type="date"
+                                                            value={item.deliveryDate || ''}
+                                                            onChange={e => updateItem(idx, 'deliveryDate', e.target.value)}
+                                                            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#f1f5f9', borderRadius: '5px', padding: '4px 5px', width: '100%', fontSize: '0.78rem' }}
+                                                        />
+                                                    </td>
                                                     <td style={{ padding: '5px 6px' }}>
                                                         <input value={item.name} onChange={e => updateItem(idx, 'name', e.target.value)}
                                                             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#f1f5f9', borderRadius: '5px', padding: '4px 7px', width: '100%', fontSize: '0.8rem' }} />
