@@ -356,37 +356,8 @@ const ProjectModal = ({
                                     <input type="text" className="input-field" value={formData.project} onChange={(e) => setFormData({ ...formData, project: e.target.value })} required />
                                 </div>
 
-                                {/* 견적서 PDF */}
-                                <div style={{ background: 'rgba(16,185,129,0.05)', padding: '1rem', borderRadius: '12px', marginBottom: '0.75rem', border: '1px solid rgba(16,185,129,0.15)', marginTop: '1rem' }}>
-                                    <h4 style={{ margin: '0 0 0.75rem 0', color: '#10b981', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><FileText size={14} /> 과거 견적서 PDF</h4>
-                                    {formData.quotePdfUrl && (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.65rem', background: 'rgba(16,185,129,0.08)', padding: '0.45rem 0.7rem', borderRadius: '8px' }}>
-                                            <FileText size={13} color="#10b981" />
-                                            <span style={{ color: '#10b981', fontSize: '0.78rem', flex: 1, fontWeight: '600' }}>견적서 PDF 등록됨</span>
-                                            <button type="button" onClick={() => setFormData(prev => ({ ...prev, quotePdfUrl: '' }))} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.72rem', padding: '0 0.2rem' }}>✕ 제거</button>
-                                        </div>
-                                    )}
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                        <input ref={pdfInputRef} type="file" accept="application/pdf" style={{ display: 'none' }} onChange={handlePdfUpload} />
-                                        <button type="button" onClick={() => pdfInputRef.current && pdfInputRef.current.click()} disabled={pdfUploading}
-                                            style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.4)', color: '#10b981', borderRadius: '8px', padding: '0.45rem 0.85rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}>
-                                            {pdfUploading ? <><Loader size={12} style={{ animation: 'spin 1s linear infinite' }} /> 업로드 중...</> : <><Upload size={13} /> {formData.quotePdfUrl ? '재업로드' : 'PDF 업로드'}</>}
-                                        </button>
-                                        <a href={formData.quotePdfUrl || undefined} target="_blank" rel="noopener noreferrer"
-                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: formData.quotePdfUrl ? 'rgba(16,185,129,0.12)' : 'rgba(255,255,255,0.04)', border: `1px solid ${formData.quotePdfUrl ? 'rgba(16,185,129,0.35)' : 'rgba(255,255,255,0.08)'}`, color: formData.quotePdfUrl ? '#10b981' : '#334155', borderRadius: '8px', padding: '0.45rem 0.85rem', fontSize: '0.8rem', fontWeight: '600', textDecoration: 'none', pointerEvents: formData.quotePdfUrl ? 'auto' : 'none', cursor: formData.quotePdfUrl ? 'pointer' : 'default', opacity: formData.quotePdfUrl ? 1 : 0.45 }}>
-                                            👁 보기
-                                        </a>
-                                        <a href={formData.quotePdfUrl || undefined} download
-                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: formData.quotePdfUrl ? 'rgba(16,185,129,0.25)' : 'rgba(255,255,255,0.04)', border: `1px solid ${formData.quotePdfUrl ? 'rgba(16,185,129,0.5)' : 'rgba(255,255,255,0.08)'}`, color: formData.quotePdfUrl ? '#fff' : '#334155', borderRadius: '8px', padding: '0.45rem 0.85rem', fontSize: '0.8rem', fontWeight: '700', textDecoration: 'none', pointerEvents: formData.quotePdfUrl ? 'auto' : 'none', cursor: formData.quotePdfUrl ? 'pointer' : 'default', opacity: formData.quotePdfUrl ? 1 : 0.45 }}>
-                                            ⬇ 다운로드
-                                        </a>
-                                        {!formData.quotePdfUrl && <span style={{ fontSize: '0.68rem', color: '#475569' }}>업로드 후 활성화</span>}
-                                    </div>
-                                    {pdfError && <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.4rem' }}>{pdfError}</p>}
-                                </div>
-
                                 {/* 메일 PDF */}
-                                <div style={{ background: 'rgba(99,102,241,0.05)', padding: '1rem', borderRadius: '12px', marginBottom: '0.75rem', border: '1px solid rgba(99,102,241,0.15)' }}>
+                                <div style={{ background: 'rgba(99,102,241,0.05)', padding: '1rem', borderRadius: '12px', marginBottom: '0.75rem', border: '1px solid rgba(99,102,241,0.15)', marginTop: '1rem' }}>
                                     <h4 style={{ margin: '0 0 0.75rem 0', color: '#818cf8', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><FileText size={14} /> 메일 내용 PDF</h4>
                                     {formData.mailPdfUrl && (
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.65rem', background: 'rgba(99,102,241,0.08)', padding: '0.45rem 0.7rem', borderRadius: '8px' }}>
@@ -412,6 +383,35 @@ const ProjectModal = ({
                                         {!formData.mailPdfUrl && <span style={{ fontSize: '0.68rem', color: '#475569' }}>업로드 후 활성화</span>}
                                     </div>
                                     {mailError && <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.4rem' }}>{mailError}</p>}
+                                </div>
+
+                                {/* 견적서 PDF */}
+                                <div style={{ background: 'rgba(16,185,129,0.05)', padding: '1rem', borderRadius: '12px', marginBottom: '0.75rem', border: '1px solid rgba(16,185,129,0.15)' }}>
+                                    <h4 style={{ margin: '0 0 0.75rem 0', color: '#10b981', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><FileText size={14} /> 과거 견적서 PDF</h4>
+                                    {formData.quotePdfUrl && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.65rem', background: 'rgba(16,185,129,0.08)', padding: '0.45rem 0.7rem', borderRadius: '8px' }}>
+                                            <FileText size={13} color="#10b981" />
+                                            <span style={{ color: '#10b981', fontSize: '0.78rem', flex: 1, fontWeight: '600' }}>견적서 PDF 등록됨</span>
+                                            <button type="button" onClick={() => setFormData(prev => ({ ...prev, quotePdfUrl: '' }))} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.72rem', padding: '0 0.2rem' }}>✕ 제거</button>
+                                        </div>
+                                    )}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                        <input ref={pdfInputRef} type="file" accept="application/pdf" style={{ display: 'none' }} onChange={handlePdfUpload} />
+                                        <button type="button" onClick={() => pdfInputRef.current && pdfInputRef.current.click()} disabled={pdfUploading}
+                                            style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.4)', color: '#10b981', borderRadius: '8px', padding: '0.45rem 0.85rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}>
+                                            {pdfUploading ? <><Loader size={12} style={{ animation: 'spin 1s linear infinite' }} /> 업로드 중...</> : <><Upload size={13} /> {formData.quotePdfUrl ? '재업로드' : 'PDF 업로드'}</>}
+                                        </button>
+                                        <a href={formData.quotePdfUrl || undefined} target="_blank" rel="noopener noreferrer"
+                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: formData.quotePdfUrl ? 'rgba(16,185,129,0.12)' : 'rgba(255,255,255,0.04)', border: `1px solid ${formData.quotePdfUrl ? 'rgba(16,185,129,0.35)' : 'rgba(255,255,255,0.08)'}`, color: formData.quotePdfUrl ? '#10b981' : '#334155', borderRadius: '8px', padding: '0.45rem 0.85rem', fontSize: '0.8rem', fontWeight: '600', textDecoration: 'none', pointerEvents: formData.quotePdfUrl ? 'auto' : 'none', cursor: formData.quotePdfUrl ? 'pointer' : 'default', opacity: formData.quotePdfUrl ? 1 : 0.45 }}>
+                                            👁 보기
+                                        </a>
+                                        <a href={formData.quotePdfUrl || undefined} download
+                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: formData.quotePdfUrl ? 'rgba(16,185,129,0.25)' : 'rgba(255,255,255,0.04)', border: `1px solid ${formData.quotePdfUrl ? 'rgba(16,185,129,0.5)' : 'rgba(255,255,255,0.08)'}`, color: formData.quotePdfUrl ? '#fff' : '#334155', borderRadius: '8px', padding: '0.45rem 0.85rem', fontSize: '0.8rem', fontWeight: '700', textDecoration: 'none', pointerEvents: formData.quotePdfUrl ? 'auto' : 'none', cursor: formData.quotePdfUrl ? 'pointer' : 'default', opacity: formData.quotePdfUrl ? 1 : 0.45 }}>
+                                            ⬇ 다운로드
+                                        </a>
+                                        {!formData.quotePdfUrl && <span style={{ fontSize: '0.68rem', color: '#475569' }}>업로드 후 활성화</span>}
+                                    </div>
+                                    {pdfError && <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.4rem' }}>{pdfError}</p>}
                                 </div>
 
                                 {/* 최종 제품 사진 */}
