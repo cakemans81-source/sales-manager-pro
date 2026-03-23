@@ -259,66 +259,8 @@ const ProjectModal = ({
                         {/* ── 2컬럼 메인 레이아웃 ── */}
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', alignItems: 'start' }}>
 
-                            {/* 좌측: 담당자 + 기본정보 + 첨부파일 */}
+                            {/* 좌측: 기본정보 + 담당자 + 첨부파일 */}
                             <div>
-                                {/* 담당자 1 */}
-                                <div style={{ background: 'rgba(99,102,241,0.05)', padding: '1rem', borderRadius: '12px', marginBottom: '1rem', border: '1px solid rgba(99,102,241,0.1)' }}>
-                                    <div className="input-group">
-                                        <label style={{ color: '#818cf8', fontWeight: '800' }}>고객사 담당자 1 (주담당자)</label>
-                                        <input type="text" className="input-field" list="contact-list"
-                                            value={formData.customerContact}
-                                            onChange={(e) => {
-                                                const name = e.target.value;
-                                                const contact = contactsData.find(c => c.name === name);
-                                                if (contact) {
-                                                    setFormData({ ...formData, customerContact: name, customerPosition: contact.position || '', customerPhone: contact.phone || '', customer: contact.customer || formData.customer });
-                                                } else { setFormData({ ...formData, customerContact: name }); }
-                                            }}
-                                            placeholder="성함을 입력하거나 목록에서 선택하세요" />
-                                    </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.6rem' }}>
-                                        <div className="input-group">
-                                            <label style={{ fontSize: '0.7rem' }}>직급</label>
-                                            <input type="text" className="input-field" value={formData.customerPosition || ''} onChange={(e) => setFormData({ ...formData, customerPosition: e.target.value })} placeholder="예: 책임연구원" />
-                                        </div>
-                                        <div className="input-group">
-                                            <label style={{ fontSize: '0.7rem' }}>연락처</label>
-                                            <input type="text" className="input-field" value={formData.customerPhone} onChange={(e) => setFormData({ ...formData, customerPhone: e.target.value })} placeholder="010-0000-0000" />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* 담당자 2 */}
-                                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '12px', marginBottom: '1rem', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                    <div className="input-group">
-                                        <label style={{ color: '#94a3b8' }}>고객사 담당자 2 (부담당자 - 선택)</label>
-                                        <input type="text" className="input-field" list="contact-list"
-                                            value={formData.customerContact2 || ''}
-                                            onChange={(e) => {
-                                                const name = e.target.value;
-                                                const contact = contactsData.find(c => c.name === name);
-                                                if (contact) {
-                                                    setFormData({ ...formData, customerContact2: name, customerPosition2: contact.position || '', customerPhone2: contact.phone || '' });
-                                                } else { setFormData({ ...formData, customerContact2: name }); }
-                                            }}
-                                            placeholder="추가 담당자가 있을 경우 입력하세요" />
-                                    </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.6rem' }}>
-                                        <div className="input-group">
-                                            <label style={{ fontSize: '0.7rem' }}>직급</label>
-                                            <input type="text" className="input-field" value={formData.customerPosition2 || ''} onChange={(e) => setFormData({ ...formData, customerPosition2: e.target.value })} placeholder="예: 책임연구원" />
-                                        </div>
-                                        <div className="input-group">
-                                            <label style={{ fontSize: '0.7rem' }}>연락처</label>
-                                            <input type="text" className="input-field" value={formData.customerPhone2 || ''} onChange={(e) => setFormData({ ...formData, customerPhone2: e.target.value })} placeholder="010-0000-0000" />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <datalist id="contact-list">
-                                    {contactsData.map(c => (<option key={c.id} value={c.name}>{c.customer} - {c.position}</option>))}
-                                </datalist>
-
                                 {/* 사업자 선택 */}
                                 <div className="input-group" style={{ marginBottom: '1rem' }}>
                                     <label style={{ marginBottom: '0.5rem', display: 'block' }}>📋 소속 사업자</label>
@@ -351,112 +293,165 @@ const ProjectModal = ({
                                     <label>고객사명</label>
                                     <input type="text" className="input-field" value={formData.customer} onChange={(e) => setFormData({ ...formData, customer: e.target.value })} required />
                                 </div>
-                                <div className="input-group">
+                                <div className="input-group" style={{ marginBottom: '1.25rem' }}>
                                     <label>프로젝트명</label>
                                     <input type="text" className="input-field" value={formData.project} onChange={(e) => setFormData({ ...formData, project: e.target.value })} required />
                                 </div>
 
-                                {/* 메일 PDF */}
-                                <div style={{ background: 'rgba(99,102,241,0.05)', padding: '1rem', borderRadius: '12px', marginBottom: '0.75rem', border: '1px solid rgba(99,102,241,0.15)', marginTop: '1rem' }}>
-                                    <h4 style={{ margin: '0 0 0.75rem 0', color: '#818cf8', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><FileText size={14} /> 메일 내용 PDF</h4>
-                                    {formData.mailPdfUrl && (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.65rem', background: 'rgba(99,102,241,0.08)', padding: '0.45rem 0.7rem', borderRadius: '8px' }}>
-                                            <FileText size={13} color="#818cf8" />
-                                            <span style={{ color: '#818cf8', fontSize: '0.78rem', flex: 1, fontWeight: '600' }}>메일 PDF 등록됨</span>
-                                            <button type="button" onClick={handleMailPdfRemove} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.72rem', padding: '0 0.2rem' }}>✕ 제거</button>
+                                {/* 담당자 1 */}
+                                <div style={{ background: 'rgba(99,102,241,0.05)', padding: '1rem', borderRadius: '12px', marginBottom: '1rem', border: '1px solid rgba(99,102,241,0.1)' }}>
+                                    <div className="input-group">
+                                        <label style={{ color: '#818cf8', fontWeight: '800' }}>고객사 담당자 1 (주담당자)</label>
+                                        <input type="text" className="input-field" list="contact-list"
+                                            value={formData.customerContact}
+                                            onChange={(e) => {
+                                                const name = e.target.value;
+                                                const contact = contactsData.find(c => c.name === name);
+                                                if (contact) {
+                                                    setFormData({ ...formData, customerContact: name, customerPosition: contact.position || '', customerPhone: contact.phone || '', customer: contact.customer || formData.customer });
+                                                } else { setFormData({ ...formData, customerContact: name }); }
+                                            }}
+                                            placeholder="성함을 입력하거나 목록에서 선택하세요" />
+                                    </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.6rem' }}>
+                                        <div className="input-group">
+                                            <label style={{ fontSize: '0.7rem' }}>직급</label>
+                                            <input type="text" className="input-field" value={formData.customerPosition || ''} onChange={(e) => setFormData({ ...formData, customerPosition: e.target.value })} placeholder="예: 책임연구원" />
                                         </div>
-                                    )}
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                        <input ref={mailPdfRef} type="file" accept="application/pdf" style={{ display: 'none' }} onChange={handleMailPdfUpload} />
-                                        <button type="button" onClick={() => mailPdfRef.current && mailPdfRef.current.click()} disabled={mailUploading}
-                                            style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.4)', color: '#818cf8', borderRadius: '8px', padding: '0.45rem 0.85rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}>
-                                            {mailUploading ? <><Loader size={12} style={{ animation: 'spin 1s linear infinite' }} /> 업로드 중...</> : <><Upload size={13} /> {formData.mailPdfUrl ? '재업로드' : 'PDF 업로드'}</>}
-                                        </button>
-                                        <a href={formData.mailPdfUrl || undefined} target="_blank" rel="noopener noreferrer"
-                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: formData.mailPdfUrl ? 'rgba(99,102,241,0.12)' : 'rgba(255,255,255,0.04)', border: `1px solid ${formData.mailPdfUrl ? 'rgba(99,102,241,0.35)' : 'rgba(255,255,255,0.08)'}`, color: formData.mailPdfUrl ? '#818cf8' : '#334155', borderRadius: '8px', padding: '0.45rem 0.85rem', fontSize: '0.8rem', fontWeight: '600', textDecoration: 'none', pointerEvents: formData.mailPdfUrl ? 'auto' : 'none', cursor: formData.mailPdfUrl ? 'pointer' : 'default', opacity: formData.mailPdfUrl ? 1 : 0.45 }}>
-                                            👁 보기
-                                        </a>
-                                        <a href={formData.mailPdfUrl || undefined} download
-                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: formData.mailPdfUrl ? 'rgba(99,102,241,0.25)' : 'rgba(255,255,255,0.04)', border: `1px solid ${formData.mailPdfUrl ? 'rgba(99,102,241,0.5)' : 'rgba(255,255,255,0.08)'}`, color: formData.mailPdfUrl ? '#fff' : '#334155', borderRadius: '8px', padding: '0.45rem 0.85rem', fontSize: '0.8rem', fontWeight: '700', textDecoration: 'none', pointerEvents: formData.mailPdfUrl ? 'auto' : 'none', cursor: formData.mailPdfUrl ? 'pointer' : 'default', opacity: formData.mailPdfUrl ? 1 : 0.45 }}>
-                                            ⬇ 다운로드
-                                        </a>
-                                        {!formData.mailPdfUrl && <span style={{ fontSize: '0.68rem', color: '#475569' }}>업로드 후 활성화</span>}
-                                    </div>
-                                    {mailError && <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.4rem' }}>{mailError}</p>}
-                                </div>
-
-                                {/* 견적서 PDF */}
-                                <div style={{ background: 'rgba(16,185,129,0.05)', padding: '1rem', borderRadius: '12px', marginBottom: '0.75rem', border: '1px solid rgba(16,185,129,0.15)' }}>
-                                    <h4 style={{ margin: '0 0 0.75rem 0', color: '#10b981', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><FileText size={14} /> 과거 견적서 PDF</h4>
-                                    {formData.quotePdfUrl && (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.65rem', background: 'rgba(16,185,129,0.08)', padding: '0.45rem 0.7rem', borderRadius: '8px' }}>
-                                            <FileText size={13} color="#10b981" />
-                                            <span style={{ color: '#10b981', fontSize: '0.78rem', flex: 1, fontWeight: '600' }}>견적서 PDF 등록됨</span>
-                                            <button type="button" onClick={() => setFormData(prev => ({ ...prev, quotePdfUrl: '' }))} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.72rem', padding: '0 0.2rem' }}>✕ 제거</button>
+                                        <div className="input-group">
+                                            <label style={{ fontSize: '0.7rem' }}>연락처</label>
+                                            <input type="text" className="input-field" value={formData.customerPhone} onChange={(e) => setFormData({ ...formData, customerPhone: e.target.value })} placeholder="010-0000-0000" />
                                         </div>
-                                    )}
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                        <input ref={pdfInputRef} type="file" accept="application/pdf" style={{ display: 'none' }} onChange={handlePdfUpload} />
-                                        <button type="button" onClick={() => pdfInputRef.current && pdfInputRef.current.click()} disabled={pdfUploading}
-                                            style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.4)', color: '#10b981', borderRadius: '8px', padding: '0.45rem 0.85rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}>
-                                            {pdfUploading ? <><Loader size={12} style={{ animation: 'spin 1s linear infinite' }} /> 업로드 중...</> : <><Upload size={13} /> {formData.quotePdfUrl ? '재업로드' : 'PDF 업로드'}</>}
-                                        </button>
-                                        <a href={formData.quotePdfUrl || undefined} target="_blank" rel="noopener noreferrer"
-                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: formData.quotePdfUrl ? 'rgba(16,185,129,0.12)' : 'rgba(255,255,255,0.04)', border: `1px solid ${formData.quotePdfUrl ? 'rgba(16,185,129,0.35)' : 'rgba(255,255,255,0.08)'}`, color: formData.quotePdfUrl ? '#10b981' : '#334155', borderRadius: '8px', padding: '0.45rem 0.85rem', fontSize: '0.8rem', fontWeight: '600', textDecoration: 'none', pointerEvents: formData.quotePdfUrl ? 'auto' : 'none', cursor: formData.quotePdfUrl ? 'pointer' : 'default', opacity: formData.quotePdfUrl ? 1 : 0.45 }}>
-                                            👁 보기
-                                        </a>
-                                        <a href={formData.quotePdfUrl || undefined} download
-                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: formData.quotePdfUrl ? 'rgba(16,185,129,0.25)' : 'rgba(255,255,255,0.04)', border: `1px solid ${formData.quotePdfUrl ? 'rgba(16,185,129,0.5)' : 'rgba(255,255,255,0.08)'}`, color: formData.quotePdfUrl ? '#fff' : '#334155', borderRadius: '8px', padding: '0.45rem 0.85rem', fontSize: '0.8rem', fontWeight: '700', textDecoration: 'none', pointerEvents: formData.quotePdfUrl ? 'auto' : 'none', cursor: formData.quotePdfUrl ? 'pointer' : 'default', opacity: formData.quotePdfUrl ? 1 : 0.45 }}>
-                                            ⬇ 다운로드
-                                        </a>
-                                        {!formData.quotePdfUrl && <span style={{ fontSize: '0.68rem', color: '#475569' }}>업로드 후 활성화</span>}
                                     </div>
-                                    {pdfError && <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.4rem' }}>{pdfError}</p>}
                                 </div>
 
-                                {/* 최종 제품 사진 */}
-                                <div style={{ background: 'rgba(245,158,11,0.05)', padding: '1rem', borderRadius: '12px', marginBottom: '0.75rem', border: '1px solid rgba(245,158,11,0.15)' }}>
-                                    <h4 style={{ margin: '0 0 0.75rem 0', color: '#f59e0b', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><LayoutGrid size={14} /> 최종 제품 사진</h4>
-                                    {renderImageGrid(formData.finalProductPhotos, handleProductPhotoRemove, '#f59e0b', '제품사진')}
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                                        <input ref={photoInputRef} type="file" accept="image/png,image/jpeg,image/jpg" multiple style={{ display: 'none' }} onChange={handleProductPhotosUpload} />
-                                        <button type="button" onClick={() => photoInputRef.current && photoInputRef.current.click()} disabled={photoUploading}
-                                            style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', color: '#f59e0b', borderRadius: '8px', padding: '0.45rem 0.85rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}>
-                                            {photoUploading ? <><Loader size={12} style={{ animation: 'spin 1s linear infinite' }} /> 업로드 중...</> : <><Plus size={13} /> 사진 추가</>}
-                                        </button>
-                                        <span style={{ fontSize: '0.68rem', color: '#64748b' }}>PNG·JPG 최대 20MB</span>
+                                {/* 담당자 2 */}
+                                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '12px', marginBottom: '1.25rem', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                    <div className="input-group">
+                                        <label style={{ color: '#94a3b8' }}>고객사 담당자 2 (부담당자 - 선택)</label>
+                                        <input type="text" className="input-field" list="contact-list"
+                                            value={formData.customerContact2 || ''}
+                                            onChange={(e) => {
+                                                const name = e.target.value;
+                                                const contact = contactsData.find(c => c.name === name);
+                                                if (contact) {
+                                                    setFormData({ ...formData, customerContact2: name, customerPosition2: contact.position || '', customerPhone2: contact.phone || '' });
+                                                } else { setFormData({ ...formData, customerContact2: name }); }
+                                            }}
+                                            placeholder="추가 담당자가 있을 경우 입력하세요" />
                                     </div>
-                                    {photoError && <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.4rem' }}>{photoError}</p>}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.6rem' }}>
+                                        <div className="input-group">
+                                            <label style={{ fontSize: '0.7rem' }}>직급</label>
+                                            <input type="text" className="input-field" value={formData.customerPosition2 || ''} onChange={(e) => setFormData({ ...formData, customerPosition2: e.target.value })} placeholder="예: 책임연구원" />
+                                        </div>
+                                        <div className="input-group">
+                                            <label style={{ fontSize: '0.7rem' }}>연락처</label>
+                                            <input type="text" className="input-field" value={formData.customerPhone2 || ''} onChange={(e) => setFormData({ ...formData, customerPhone2: e.target.value })} placeholder="010-0000-0000" />
+                                        </div>
+                                    </div>
                                 </div>
 
-                                {/* 견적 합의서 이미지 */}
-                                <div style={{ background: 'rgba(14,165,233,0.05)', padding: '1rem', borderRadius: '12px', marginBottom: '0.75rem', border: '1px solid rgba(14,165,233,0.15)' }}>
-                                    <h4 style={{ margin: '0 0 0.75rem 0', color: '#0ea5e9', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><FileImage size={14} /> 견적 합의서 이미지</h4>
-                                    {renderImageGrid(formData.agreementImages, handleAgreementImageRemove, '#0ea5e9', '합의서')}
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                                        <input ref={agreementInputRef} type="file" accept="image/png,image/jpeg,image/jpg" multiple style={{ display: 'none' }} onChange={handleAgreementImagesUpload} />
-                                        <button type="button" onClick={() => agreementInputRef.current && agreementInputRef.current.click()} disabled={agreementUploading}
-                                            style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(14,165,233,0.15)', border: '1px solid rgba(14,165,233,0.4)', color: '#0ea5e9', borderRadius: '8px', padding: '0.45rem 0.85rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}>
-                                            {agreementUploading ? <><Loader size={12} style={{ animation: 'spin 1s linear infinite' }} /> 업로드 중...</> : <><Plus size={13} /> 이미지 추가</>}
-                                        </button>
-                                        <span style={{ fontSize: '0.68rem', color: '#64748b' }}>PNG·JPG 최대 20MB</span>
-                                    </div>
-                                    {agreementError && <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.4rem' }}>{agreementError}</p>}
-                                </div>
+                                <datalist id="contact-list">
+                                    {contactsData.map(c => (<option key={c.id} value={c.name}>{c.customer} - {c.position}</option>))}
+                                </datalist>
 
-                                {/* 세금계산서 이미지 */}
-                                <div style={{ background: 'rgba(52,211,153,0.05)', padding: '1rem', borderRadius: '12px', marginBottom: '0.75rem', border: '1px solid rgba(52,211,153,0.15)' }}>
-                                    <h4 style={{ margin: '0 0 0.75rem 0', color: '#34d399', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Receipt size={14} /> 세금계산서 이미지</h4>
-                                    {renderImageGrid(formData.taxInvoiceImages, handleTaxInvoiceImageRemove, '#34d399', '세금계산서')}
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                                        <input ref={taxInvoiceInputRef} type="file" accept="image/png,image/jpeg,image/jpg" multiple style={{ display: 'none' }} onChange={handleTaxInvoiceImagesUpload} />
-                                        <button type="button" onClick={() => taxInvoiceInputRef.current && taxInvoiceInputRef.current.click()} disabled={taxInvoiceUploading}
-                                            style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(52,211,153,0.15)', border: '1px solid rgba(52,211,153,0.4)', color: '#34d399', borderRadius: '8px', padding: '0.45rem 0.85rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}>
-                                            {taxInvoiceUploading ? <><Loader size={12} style={{ animation: 'spin 1s linear infinite' }} /> 업로드 중...</> : <><Plus size={13} /> 이미지 추가</>}
-                                        </button>
-                                        <span style={{ fontSize: '0.68rem', color: '#64748b' }}>PNG·JPG 최대 20MB</span>
+                                {/* 첨부파일 2단 그리드 묶음 */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                    {/* 과거 견적서 PDF */}
+                                    <div style={{ background: 'rgba(16,185,129,0.05)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(16,185,129,0.15)' }}>
+                                        <h4 style={{ margin: '0 0 0.75rem 0', color: '#10b981', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><FileText size={14} /> 과거 견적서 PDF</h4>
+                                        {formData.quotePdfUrl && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.65rem', background: 'rgba(16,185,129,0.08)', padding: '0.45rem 0.7rem', borderRadius: '8px' }}>
+                                                <FileText size={13} color="#10b981" />
+                                                <span style={{ color: '#10b981', fontSize: '0.72rem', flex: 1, fontWeight: '600' }}>첨부됨</span>
+                                                <button type="button" onClick={() => setFormData(prev => ({ ...prev, quotePdfUrl: '' }))} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.72rem', padding: '0 0.2rem' }}>✕ 삭제</button>
+                                            </div>
+                                        )}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                            <input ref={pdfInputRef} type="file" accept="application/pdf" style={{ display: 'none' }} onChange={handlePdfUpload} />
+                                            <button type="button" onClick={() => pdfInputRef.current && pdfInputRef.current.click()} disabled={pdfUploading}
+                                                style={{ flex: 1, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.4)', color: '#10b981', borderRadius: '8px', padding: '0.45rem 0.5rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600' }}>
+                                                {pdfUploading ? <><Loader size={12} style={{ animation: 'spin 1s linear infinite' }} /> 업로드 중...</> : <><Upload size={13} /> 업로드</>}
+                                            </button>
+                                            {formData.quotePdfUrl && (
+                                                <a href={formData.quotePdfUrl || undefined} target="_blank" rel="noopener noreferrer"
+                                                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(16,185,129,0.25)', border: '1px solid rgba(16,185,129,0.5)', color: '#fff', borderRadius: '8px', padding: '0.45rem 0.6rem', fontSize: '0.75rem', fontWeight: '700', textDecoration: 'none' }}>
+                                                    👁 보기
+                                                </a>
+                                            )}
+                                        </div>
+                                        {pdfError && <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.4rem' }}>{pdfError}</p>}
                                     </div>
-                                    {taxInvoiceError && <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.4rem' }}>{taxInvoiceError}</p>}
+
+                                    {/* 메일 내용 PDF */}
+                                    <div style={{ background: 'rgba(99,102,241,0.05)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(99,102,241,0.15)' }}>
+                                        <h4 style={{ margin: '0 0 0.75rem 0', color: '#818cf8', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><FileText size={14} /> 메일 내용 PDF</h4>
+                                        {formData.mailPdfUrl && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.65rem', background: 'rgba(99,102,241,0.08)', padding: '0.45rem 0.7rem', borderRadius: '8px' }}>
+                                                <FileText size={13} color="#818cf8" />
+                                                <span style={{ color: '#818cf8', fontSize: '0.72rem', flex: 1, fontWeight: '600' }}>첨부됨</span>
+                                                <button type="button" onClick={handleMailPdfRemove} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.72rem', padding: '0 0.2rem' }}>✕ 삭제</button>
+                                            </div>
+                                        )}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                            <input ref={mailPdfRef} type="file" accept="application/pdf" style={{ display: 'none' }} onChange={handleMailPdfUpload} />
+                                            <button type="button" onClick={() => mailPdfRef.current && mailPdfRef.current.click()} disabled={mailUploading}
+                                                style={{ flex: 1, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.4)', color: '#818cf8', borderRadius: '8px', padding: '0.45rem 0.5rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600' }}>
+                                                {mailUploading ? <><Loader size={12} style={{ animation: 'spin 1s linear infinite' }} /> 업로드 중...</> : <><Upload size={13} /> 업로드</>}
+                                            </button>
+                                            {formData.mailPdfUrl && (
+                                                <a href={formData.mailPdfUrl || undefined} target="_blank" rel="noopener noreferrer"
+                                                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(99,102,241,0.25)', border: '1px solid rgba(99,102,241,0.5)', color: '#fff', borderRadius: '8px', padding: '0.45rem 0.6rem', fontSize: '0.75rem', fontWeight: '700', textDecoration: 'none' }}>
+                                                    👁 보기
+                                                </a>
+                                            )}
+                                        </div>
+                                        {mailError && <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.4rem' }}>{mailError}</p>}
+                                    </div>
+
+                                    {/* 견적 합의서 이미지 */}
+                                    <div style={{ background: 'rgba(14,165,233,0.05)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(14,165,233,0.15)' }}>
+                                        <h4 style={{ margin: '0 0 0.75rem 0', color: '#0ea5e9', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><FileImage size={14} /> 견적 합의서 이미지</h4>
+                                        {renderImageGrid(formData.agreementImages, handleAgreementImageRemove, '#0ea5e9', '합의서')}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                            <input ref={agreementInputRef} type="file" accept="image/png,image/jpeg,image/jpg" multiple style={{ display: 'none' }} onChange={handleAgreementImagesUpload} />
+                                            <button type="button" onClick={() => agreementInputRef.current && agreementInputRef.current.click()} disabled={agreementUploading}
+                                                style={{ flex: 1, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(14,165,233,0.15)', border: '1px solid rgba(14,165,233,0.4)', color: '#0ea5e9', borderRadius: '8px', padding: '0.45rem 0.5rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600' }}>
+                                                {agreementUploading ? <><Loader size={12} style={{ animation: 'spin 1s linear infinite' }} /> 업로드 중...</> : <><Plus size={13} /> 사진 업로드</>}
+                                            </button>
+                                        </div>
+                                        {agreementError && <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.4rem' }}>{agreementError}</p>}
+                                    </div>
+
+                                    {/* 세금계산서 이미지 */}
+                                    <div style={{ background: 'rgba(52,211,153,0.05)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(52,211,153,0.15)' }}>
+                                        <h4 style={{ margin: '0 0 0.75rem 0', color: '#34d399', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Receipt size={14} /> 세금계산서 이미지</h4>
+                                        {renderImageGrid(formData.taxInvoiceImages, handleTaxInvoiceImageRemove, '#34d399', '세금계산서')}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                            <input ref={taxInvoiceInputRef} type="file" accept="image/png,image/jpeg,image/jpg" multiple style={{ display: 'none' }} onChange={handleTaxInvoiceImagesUpload} />
+                                            <button type="button" onClick={() => taxInvoiceInputRef.current && taxInvoiceInputRef.current.click()} disabled={taxInvoiceUploading}
+                                                style={{ flex: 1, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(52,211,153,0.15)', border: '1px solid rgba(52,211,153,0.4)', color: '#34d399', borderRadius: '8px', padding: '0.45rem 0.5rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600' }}>
+                                                {taxInvoiceUploading ? <><Loader size={12} style={{ animation: 'spin 1s linear infinite' }} /> 업로드 중...</> : <><Plus size={13} /> 사진 업로드</>}
+                                            </button>
+                                        </div>
+                                        {taxInvoiceError && <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.4rem' }}>{taxInvoiceError}</p>}
+                                    </div>
+
+                                    {/* 최종 제품 사진 (전체 너비 사용) */}
+                                    <div style={{ background: 'rgba(245,158,11,0.05)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(245,158,11,0.15)', gridColumn: '1 / -1' }}>
+                                        <h4 style={{ margin: '0 0 0.75rem 0', color: '#f59e0b', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><LayoutGrid size={14} /> 최종 제품 사진 <span style={{ fontSize: '0.7rem', color: '#f5f5f5', fontWeight: 'normal' }}>(PNG·JPG 최대 20MB)</span></h4>
+                                        {renderImageGrid(formData.finalProductPhotos, handleProductPhotoRemove, '#f59e0b', '제품사진')}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                            <input ref={photoInputRef} type="file" accept="image/png,image/jpeg,image/jpg" multiple style={{ display: 'none' }} onChange={handleProductPhotosUpload} />
+                                            <button type="button" onClick={() => photoInputRef.current && photoInputRef.current.click()} disabled={photoUploading}
+                                                style={{ flex: 1, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', color: '#f59e0b', borderRadius: '8px', padding: '0.5rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}>
+                                                {photoUploading ? <><Loader size={12} style={{ animation: 'spin 1s linear infinite' }} /> 여러 장 업로드 중...</> : <><Plus size={13} /> 추가 사진 일괄 업로드</>}
+                                            </button>
+                                        </div>
+                                        {photoError && <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.4rem' }}>{photoError}</p>}
+                                    </div>
+
                                 </div>
                             </div>
 
