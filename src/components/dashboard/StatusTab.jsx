@@ -5,7 +5,7 @@ import { formatDate } from '../../lib/dateUtils';
 // ─────────────────────────────────────────────────────────
 // PhotoViewerModal: 다중 제품 사진 팝업 뷰어
 // ─────────────────────────────────────────────────────────
-const PhotoViewerModal = ({ photos, onClose }) => {
+const PhotoViewerModal = ({ photos, onClose, title = "최종 제품 사진" }) => {
     if (!photos || photos.length === 0) return null;
     return (
         <div
@@ -35,7 +35,7 @@ const PhotoViewerModal = ({ photos, onClose }) => {
                 {/* 헤더 */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
                     <h3 style={{ margin: 0, color: '#f1f5f9', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <Image size={18} color="#f59e0b" /> 최종 제품 사진
+                        <Image size={18} color="#f59e0b" /> {title}
                         <span style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: '400' }}>({photos.length}장)</span>
                     </h3>
                     <button
@@ -112,7 +112,8 @@ const STATUS_COLORS = {
 
 const TableRow = memo(({ item, isSelected, statusFilter, onOpen, onToggle, onDelete, userRole, onShowPhotos, rowIndex, onToggleStar }) => {
     const photos = Array.isArray(item.finalProductPhotos) ? item.finalProductPhotos : [];
-    const hasAnyAttachment = item.quotePdfUrl || item.mailPdfUrl || photos.length > 0;
+    const taxInvoices = Array.isArray(item.taxInvoiceImages) ? item.taxInvoiceImages : [];
+    const hasAnyAttachment = item.quotePdfUrl || item.mailPdfUrl || photos.length > 0 || taxInvoices.length > 0;
     const sc = STATUS_COLORS[item.status] || { bg: 'rgba(99,102,241,0.1)', border: 'rgba(99,102,241,0.3)', text: '#818cf8' };
 
     const revenue = item.discountAmount > 0 ? item.discountAmount : item.estimateAmount || 0;
@@ -262,8 +263,14 @@ const TableRow = memo(({ item, isSelected, statusFilter, onOpen, onToggle, onDel
                         )}
                         {photos.length > 0 && (
                             <button style={badgeBtn('#f59e0b', 'rgba(245,158,11,0.12)', 'rgba(245,158,11,0.35)')}
-                                onClick={() => onShowPhotos(photos)} title={`사진 ${photos.length}장`}>
+                                onClick={() => onShowPhotos(photos, "제품 사진")} title={`사진 ${photos.length}장`}>
                                 🖼️ {photos.length > 1 ? `${photos.length}장` : '사진'}
+                            </button>
+                        )}
+                        {taxInvoices.length > 0 && (
+                            <button style={badgeBtn('#ec4899', 'rgba(236,72,153,0.12)', 'rgba(236,72,153,0.35)')}
+                                onClick={() => onShowPhotos(taxInvoices, "세금계산서")} title={`세금계산서 ${taxInvoices.length}장`}>
+                                🧾 {taxInvoices.length > 1 ? `계산서 ${taxInvoices.length}장` : '계산서'}
                             </button>
                         )}
                     </div>
@@ -407,7 +414,8 @@ const StatusTab = ({
             {/* 사진 뷰어 모달 */}
             {viewerPhotos && (
                 <PhotoViewerModal
-                    photos={viewerPhotos}
+                    photos={viewerPhotos.photos || viewerPhotos}
+                    title={viewerPhotos.title}
                     onClose={() => setViewerPhotos(null)}
                 />
             )}
@@ -652,7 +660,7 @@ const StatusTab = ({
                                     onToggle={toggleSelection}
                                     onDelete={handleDeleteItem}
                                     userRole={user.role}
-                                    onShowPhotos={setViewerPhotos}
+                                    onShowPhotos={(photos, title) => setViewerPhotos({ photos, title })}
                                     onToggleStar={onToggleStar || (() => { })}
                                 />
                             ))}
