@@ -286,10 +286,19 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
     return new Date(y, m, d);
   };
 
+  // 상태 필터가 활성화되면 해당 상태의 statusDates 날짜를 기준으로 연도/월/범위 필터를 적용
+  const getFilterDate = (item) => {
+    if (statusFilter && statusFilter !== '전체' && item.statusDates?.[statusFilter]) {
+      return item.statusDates[statusFilter];
+    }
+    return item.date;
+  };
+
   const baseFilteredData = useMemo(() => {
-    // "." 등 유효하지 않은 날짜는 year 파싱 시 NaN → 필터에서 자동 제외됨 (정상)
+    // 연도 필터: 상태 필터 활성 시 해당 상태 날짜 기준
     let filtered = companySalesData.filter(item => {
-      const year = parseInt(String(item.date || '').split('.')[0]);
+      const dateStr = String(getFilterDate(item) || '');
+      const year = parseInt(dateStr.split('.')[0]);
       return !isNaN(year) && selectedYears.includes(year);
     });
 
@@ -305,18 +314,21 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
       );
     }
 
-    // 2. 월 필터 (차트 클릭)
+    // 2. 월 필터 (차트 클릭): 상태 필터 활성 시 해당 상태 날짜 기준
     if (selectedMonth) {
       const targetMonth = parseInt(selectedMonth.replace('월', ''));
-      filtered = filtered.filter(item => parseInt(String(item.date).split('.')[1]) === targetMonth);
+      filtered = filtered.filter(item => {
+        const dateStr = String(getFilterDate(item) || '');
+        return parseInt(dateStr.split('.')[1]) === targetMonth;
+      });
     }
 
-    // 3. 날짜 범위 필터 (Date Range Picker)
+    // 3. 날짜 범위 필터 (Date Range Picker): 상태 필터 활성 시 해당 상태 날짜 기준
     if (dateRange.start || dateRange.end) {
       const startDate = dateRange.start ? new Date(dateRange.start) : null;
       const endDate = dateRange.end ? new Date(dateRange.end + 'T23:59:59') : null;
       filtered = filtered.filter(item => {
-        const itemDate = parseItemDate(item.date);
+        const itemDate = parseItemDate(getFilterDate(item));
         if (!itemDate) return false;
         if (startDate && itemDate < startDate) return false;
         if (endDate && itemDate > endDate) return false;
@@ -325,7 +337,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
     }
 
     return filtered;
-  }, [companySalesData, selectedMonth, selectedYears, searchTerm, dateRange]);
+  }, [companySalesData, selectedMonth, selectedYears, searchTerm, dateRange, statusFilter]);
 
   const sortData = (data) => {
     return [...data].sort((a, b) => {
@@ -367,12 +379,22 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
   }, [baseFilteredData, statusFilter, sortConfig]);
 
   // ── 프로젝트 통합 현황 전용: 연도 필터 없이 전체 데이터 ──
+  const getAllFilterDate = (item) => {
+    if (statusFilter && statusFilter !== '전체' && item.statusDates?.[statusFilter]) {
+      return item.statusDates[statusFilter];
+    }
+    return item.date;
+  };
+
   const allFilteredData = useMemo(() => {
     let filtered = salesData.filter(companyFilter);
 
-    // 연도 필터 (사이드는 전체 필터 버튼)
+    // 연도 필터: 상태 필터 활성 시 해당 상태 날짜 기준
     if (yearFilter && yearFilter !== '전체') {
-      filtered = filtered.filter(item => String(item.date).split('.')[0] === yearFilter);
+      filtered = filtered.filter(item => {
+        const dateStr = String(getAllFilterDate(item) || '');
+        return dateStr.split('.')[0] === yearFilter;
+      });
     }
 
     if (searchTerm) {
@@ -390,7 +412,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
       const startDate = dateRange.start ? new Date(dateRange.start) : null;
       const endDate = dateRange.end ? new Date(dateRange.end + 'T23:59:59') : null;
       filtered = filtered.filter(item => {
-        const itemDate = parseItemDate(item.date);
+        const itemDate = parseItemDate(getAllFilterDate(item));
         if (!itemDate) return false;
         if (startDate && itemDate < startDate) return false;
         if (endDate && itemDate > endDate) return false;
@@ -399,7 +421,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
     }
 
     return filtered;
-  }, [salesData, searchTerm, dateRange, yearFilter, companyMode]);
+  }, [salesData, searchTerm, dateRange, yearFilter, companyMode, statusFilter]);
 
   // 사용 가능한 연도 목록 (내림차순)
   const availableYears = useMemo(() => {
