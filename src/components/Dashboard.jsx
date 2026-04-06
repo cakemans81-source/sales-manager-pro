@@ -1584,8 +1584,8 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
             canEdit={canEdit} downloadTemplate={downloadTemplate} handleExcelUpload={handleExcelUpload}
             exportToExcel={exportToExcel} exportToPDF={exportToPDF} fetchSalesData={fetchSalesData}
             setIsModalOpen={openAddModal} selectedIds={selectedIds} handleBulkDelete={handleBulkDelete}
-            salesData={sortData(allFilteredData.filter(d => d.status === '견적제출중'))} config={{ ...config, isCompactView: true }}
-            toggleAllSelection={() => handleToggleAllSelection(allFilteredData.filter(d => d.status === '견적제출중'))}
+            salesData={sortData(applySearch(filterByStatusDateYear(salesData.filter(d => d.status === '견적제출중' && companyFilter(d)), '견적제출중')))} config={{ ...config, isCompactView: true }}
+            toggleAllSelection={() => handleToggleAllSelection(applySearch(filterByStatusDateYear(salesData.filter(d => d.status === '견적제출중' && companyFilter(d)), '견적제출중')))}
             toggleSelection={(e, id) => { e.stopPropagation(); handleToggleSelection(id); }}
             isPending={isPending}
             openEditModal={openEditModal} handleDeleteItem={handleDeleteItem} user={user}
@@ -1604,8 +1604,8 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
             canEdit={canEdit} downloadTemplate={downloadTemplate} handleExcelUpload={handleExcelUpload}
             exportToExcel={exportToExcel} exportToPDF={exportToPDF} fetchSalesData={fetchSalesData}
             setIsModalOpen={openAddModal} selectedIds={selectedIds} handleBulkDelete={handleBulkDelete}
-            salesData={sortData(allFilteredData.filter(d => d.status === '업체미선정'))} config={{ ...config, isCompactView: true }}
-            toggleAllSelection={() => handleToggleAllSelection(allFilteredData.filter(d => d.status === '업체미선정'))}
+            salesData={sortData(applySearch(filterByStatusDateYear(salesData.filter(d => d.status === '업체미선정' && companyFilter(d)), '업체미선정')))} config={{ ...config, isCompactView: true }}
+            toggleAllSelection={() => handleToggleAllSelection(applySearch(filterByStatusDateYear(salesData.filter(d => d.status === '업체미선정' && companyFilter(d)), '업체미선정')))}
             toggleSelection={(e, id) => { e.stopPropagation(); handleToggleSelection(id); }}
             isPending={isPending}
             openEditModal={openEditModal} handleDeleteItem={handleDeleteItem} user={user}
@@ -1624,8 +1624,8 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
             canEdit={canEdit} downloadTemplate={downloadTemplate} handleExcelUpload={handleExcelUpload}
             exportToExcel={exportToExcel} exportToPDF={exportToPDF} fetchSalesData={fetchSalesData}
             setIsModalOpen={openAddModal} selectedIds={selectedIds} handleBulkDelete={handleBulkDelete}
-            salesData={sortData(allFilteredData.filter(d => d.status === '착수완료 진행'))} config={{ ...config, isCompactView: true }}
-            toggleAllSelection={() => handleToggleAllSelection(allFilteredData.filter(d => d.status === '착수완료 진행'))}
+            salesData={sortData(applySearch(filterByStatusDateYear(salesData.filter(d => d.status === '착수완료 진행' && companyFilter(d)), '착수완료 진행')))} config={{ ...config, isCompactView: true }}
+            toggleAllSelection={() => handleToggleAllSelection(applySearch(filterByStatusDateYear(salesData.filter(d => d.status === '착수완료 진행' && companyFilter(d)), '착수완료 진행')))}
             toggleSelection={(e, id) => { e.stopPropagation(); handleToggleSelection(id); }}
             isPending={isPending}
             openEditModal={openEditModal} handleDeleteItem={handleDeleteItem} user={user}
@@ -1644,8 +1644,8 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
             canEdit={canEdit} downloadTemplate={downloadTemplate} handleExcelUpload={handleExcelUpload}
             exportToExcel={exportToExcel} exportToPDF={exportToPDF} fetchSalesData={fetchSalesData}
             setIsModalOpen={openAddModal} selectedIds={selectedIds} handleBulkDelete={handleBulkDelete}
-            salesData={sortData(allFilteredData.filter(d => d.status === '완료 마감 대기'))} config={{ ...config, isCompactView: true }}
-            toggleAllSelection={() => handleToggleAllSelection(allFilteredData.filter(d => d.status === '완료 마감 대기'))}
+            salesData={sortData(applySearch(filterByStatusDateYear(salesData.filter(d => d.status === '완료 마감 대기' && companyFilter(d)), '완료 마감 대기')))} config={{ ...config, isCompactView: true }}
+            toggleAllSelection={() => handleToggleAllSelection(applySearch(filterByStatusDateYear(salesData.filter(d => d.status === '완료 마감 대기' && companyFilter(d)), '완료 마감 대기')))}
             toggleSelection={(e, id) => { e.stopPropagation(); handleToggleSelection(id); }}
             isPending={isPending}
             openEditModal={openEditModal} handleDeleteItem={handleDeleteItem} user={user}
