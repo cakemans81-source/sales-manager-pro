@@ -344,10 +344,16 @@ const StatusTab = ({
         setCurrentPage(1);
     }, [salesData.length, statusFilter, sortConfig, monthFilter]);
 
-    // 탭별 날짜 주 쪔인: statusDateKey가 있으면 statusDates[지정키], 없으면 item.date
+    // 탭별 날짜 기준:
+    // 1) statusDateKey가 명시된 경우 우선 (개별 상태 탭)
+    // 2) statusFilter가 '전체'가 아니면 해당 상태의 statusDates 기준 (통합현황 탭)
+    // 3) 그 외 item.date (등록일)
     const getItemDate = (item) => {
         if (statusDateKey && item.statusDates?.[statusDateKey]) {
             return String(item.statusDates[statusDateKey]);
+        }
+        if (statusFilter && statusFilter !== '전체' && item.statusDates?.[statusFilter]) {
+            return String(item.statusDates[statusFilter]);
         }
         return String(item.date || '');
     };
