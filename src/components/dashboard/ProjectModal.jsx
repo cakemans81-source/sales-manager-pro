@@ -215,6 +215,25 @@ const ProjectModal = ({
         setFormData({ ...formData, [field]: numericValue });
     };
 
+    // ── 크로스 오리진 이미지 다운로드 헬퍼 (Supabase Storage URL 등) ──
+    const downloadImage = async (url, filename) => {
+        try {
+            const res = await fetch(url);
+            const blob = await res.blob();
+            const ext = blob.type.includes('png') ? 'png' : blob.type.includes('gif') ? 'gif' : blob.type.includes('webp') ? 'webp' : 'jpg';
+            const blobUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = filename.replace(/\.[^.]+$/, '') + '.' + ext;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(blobUrl);
+        } catch {
+            window.open(url, '_blank', 'noopener,noreferrer');
+        }
+    };
+
     // ── 공통: 이미지 그리드 렌더러 ──
     const renderImageGrid = (photos, onRemove, accentColor, prefix) => {
         if (!photos || photos.length === 0) return null;
@@ -225,9 +244,9 @@ const ProjectModal = ({
                         <div key={idx} style={{ position: 'relative', aspectRatio: '1', borderRadius: '8px', overflow: 'hidden', border: `1px solid ${accentColor}40`, cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
                             <img src={url} alt={`${prefix} ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                 onClick={() => window.open(url, '_blank', 'noopener,noreferrer')} title="클릭하면 원본 확인" />
-                            <a href={url} download={`${prefix}_${idx + 1}.jpg`} onClick={e => e.stopPropagation()}
-                                style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent, rgba(0,0,0,0.75))', color: accentColor, textAlign: 'center', fontSize: '11px', fontWeight: '800', textDecoration: 'none', padding: '10px 0 4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}
-                                title="이 사진 다운로드">⬇ 다운</a>
+                            <button type="button" onClick={e => { e.stopPropagation(); downloadImage(url, `${prefix}_${idx + 1}.jpg`); }}
+                                style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent, rgba(0,0,0,0.75))', color: accentColor, textAlign: 'center', fontSize: '11px', fontWeight: '800', border: 'none', padding: '10px 0 4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px', cursor: 'pointer' }}
+                                title="이 사진 다운로드">⬇ 다운</button>
                             <button type="button" onClick={() => onRemove(url)}
                                 style={{ position: 'absolute', top: '3px', right: '3px', background: 'rgba(239,68,68,0.9)', border: 'none', color: '#fff', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '11px', fontWeight: '700', boxShadow: '0 1px 4px rgba(0,0,0,0.4)' }}>✕</button>
                         </div>
@@ -236,7 +255,7 @@ const ProjectModal = ({
                 {photos.length > 1 && (
                     <div style={{ marginBottom: '0.6rem' }}>
                         <button type="button"
-                            onClick={() => { photos.forEach((url, idx) => { setTimeout(() => { const a = document.createElement('a'); a.href = url; a.download = `${prefix}_${idx + 1}.jpg`; document.body.appendChild(a); a.click(); document.body.removeChild(a); }, idx * 300); }); }}
+                            onClick={() => { photos.forEach((url, idx) => { setTimeout(() => downloadImage(url, `${prefix}_${idx + 1}.jpg`), idx * 300); }); }}
                             style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', background: `${accentColor}25`, border: `1px solid ${accentColor}66`, color: accentColor, borderRadius: '8px', padding: '0.4rem 0.9rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '700' }}>
                             ⬇️ 전체 다운로드 ({photos.length}장)
                         </button>
