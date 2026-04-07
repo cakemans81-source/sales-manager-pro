@@ -110,7 +110,7 @@ const STATUS_COLORS = {
     '무상작업': { bg: 'rgba(100,116,139,0.15)', border: 'rgba(100,116,139,0.35)', text: '#94a3b8' },
 };
 
-const TableRow = memo(({ item, isSelected, statusFilter, onOpen, onToggle, onDelete, userRole, onShowPhotos, rowIndex, onToggleStar }) => {
+const TableRow = memo(({ item, isSelected, onOpen, onToggle, onDelete, userRole, onShowPhotos, rowIndex, onToggleStar }) => {
     const photos = Array.isArray(item.finalProductPhotos) ? item.finalProductPhotos : [];
     const taxInvoices = Array.isArray(item.taxInvoiceImages) ? item.taxInvoiceImages : [];
     const hasAnyAttachment = item.quotePdfUrl || item.mailPdfUrl || photos.length > 0 || taxInvoices.length > 0;
@@ -314,8 +314,8 @@ const StatusTab = ({
     openEditModal,
     handleDeleteItem,
     user,
-    statusFilter,
-    setStatusFilter,
+    statusFilters = [],
+    toggleStatusFilter,
     hideFilter = false,
     sortConfig,
     requestSort,
@@ -342,18 +342,22 @@ const StatusTab = ({
     // 필터/정렬/데이터 변경 시 첫 페이지로 리셋
     useEffect(() => {
         setCurrentPage(1);
-    }, [salesData.length, statusFilter, sortConfig, monthFilter]);
+    }, [salesData.length, statusFilters, sortConfig, monthFilter]);
 
     // 탭별 날짜 기준:
     // 1) statusDateKey가 명시된 경우 우선 (개별 상태 탭)
-    // 2) statusFilter가 '전체'가 아니면 해당 상태의 statusDates 기준 (통합현황 탭)
-    // 3) 그 외 item.date (등록일)
+    // 2) 단일 statusFilters: 해당 상태의 statusDates 기준
+    // 3) 다중 statusFilters: 아이템 자신의 현재 상태 날짜 기준
+    // 4) 그 외 item.date (등록일)
     const getItemDate = (item) => {
         if (statusDateKey && item.statusDates?.[statusDateKey]) {
             return String(item.statusDates[statusDateKey]);
         }
-        if (statusFilter && statusFilter !== '전체' && item.statusDates?.[statusFilter]) {
-            return String(item.statusDates[statusFilter]);
+        if (statusFilters.length === 1 && item.statusDates?.[statusFilters[0]]) {
+            return String(item.statusDates[statusFilters[0]]);
+        }
+        if (statusFilters.length > 1 && statusFilters.includes(item.status) && item.statusDates?.[item.status]) {
+            return String(item.statusDates[item.status]);
         }
         return String(item.date || '');
     };
@@ -483,7 +487,7 @@ const StatusTab = ({
                     {!hideFilter && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', flexWrap: 'wrap', paddingLeft: '0.2rem' }}>
                             {statuses.map(s => {
-                                const isActive = statusFilter === s;
+                                const isActive = s === '전체' ? statusFilters.length === 0 : statusFilters.includes(s);
                                 const statusColors = {
                                     '전체': '#94a3b8',
                                     '견적제출중': '#60a5fa',
@@ -497,7 +501,7 @@ const StatusTab = ({
                                 const c = statusColors[s] || '#818cf8';
                                 return (
                                     <button key={s}
-                                        onClick={() => setStatusFilter(s)}
+                                        onClick={() => toggleStatusFilter(s)}
                                         style={{
                                             padding: '0.22rem 0.65rem', borderRadius: '6px', fontSize: '0.75rem',
                                             fontWeight: isActive ? '700' : '400',
@@ -661,7 +665,6 @@ const StatusTab = ({
                                     item={item}
                                     rowIndex={(currentPage - 1) * PAGE_SIZE + idx + 1}
                                     isSelected={selectedIds.includes(item.id)}
-                                    statusFilter={statusFilter}
                                     onOpen={openEditModal}
                                     onToggle={toggleSelection}
                                     onDelete={handleDeleteItem}

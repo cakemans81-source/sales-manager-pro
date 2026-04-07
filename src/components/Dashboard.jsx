@@ -120,7 +120,14 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
   const [isSaving, setIsSaving] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [statusFilter, setStatusFilter] = useState('전체');
+  const [statusFilters, setStatusFilters] = useState([]);
+
+  const toggleStatusFilter = (status) => {
+    if (status === '전체') { setStatusFilters([]); return; }
+    setStatusFilters(prev =>
+      prev.includes(status) ? prev.filter(s => s !== status) : [...prev, status]
+    );
+  };
   const [yearFilter, setYearFilter] = useState('전체');
 
   // 대시보드 레이아웃 설정 (관리자 전용)
@@ -288,8 +295,11 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
 
   // 상태 필터가 활성화되면 해당 상태의 statusDates 날짜를 기준으로 연도/월/범위 필터를 적용
   const getFilterDate = (item) => {
-    if (statusFilter && statusFilter !== '전체' && item.statusDates?.[statusFilter]) {
-      return item.statusDates[statusFilter];
+    if (statusFilters.length === 1 && item.statusDates?.[statusFilters[0]]) {
+      return item.statusDates[statusFilters[0]];
+    }
+    if (statusFilters.length > 1 && statusFilters.includes(item.status) && item.statusDates?.[item.status]) {
+      return item.statusDates[item.status];
     }
     return item.date;
   };
@@ -337,7 +347,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
     }
 
     return filtered;
-  }, [companySalesData, selectedMonth, selectedYears, searchTerm, dateRange, statusFilter]);
+  }, [companySalesData, selectedMonth, selectedYears, searchTerm, dateRange, statusFilters]);
 
   const sortData = (data) => {
     return [...data].sort((a, b) => {
@@ -372,16 +382,19 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
   };
 
   const sortedAndFilteredData = useMemo(() => {
-    const filtered = statusFilter === '전체'
+    const filtered = statusFilters.length === 0
       ? baseFilteredData
-      : baseFilteredData.filter(item => item.status === statusFilter);
+      : baseFilteredData.filter(item => statusFilters.includes(item.status));
     return sortData(filtered);
-  }, [baseFilteredData, statusFilter, sortConfig]);
+  }, [baseFilteredData, statusFilters, sortConfig]);
 
   // ── 프로젝트 통합 현황 전용: 연도 필터 없이 전체 데이터 ──
   const getAllFilterDate = (item) => {
-    if (statusFilter && statusFilter !== '전체' && item.statusDates?.[statusFilter]) {
-      return item.statusDates[statusFilter];
+    if (statusFilters.length === 1 && item.statusDates?.[statusFilters[0]]) {
+      return item.statusDates[statusFilters[0]];
+    }
+    if (statusFilters.length > 1 && statusFilters.includes(item.status) && item.statusDates?.[item.status]) {
+      return item.statusDates[item.status];
     }
     return item.date;
   };
@@ -421,7 +434,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
     }
 
     return filtered;
-  }, [salesData, searchTerm, dateRange, yearFilter, companyMode, statusFilter]);
+  }, [salesData, searchTerm, dateRange, yearFilter, companyMode, statusFilters]);
 
   // 사용 가능한 연도 목록 (내림차순)
   const availableYears = useMemo(() => {
@@ -455,11 +468,11 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
   };
 
   const allSortedAndFilteredData = useMemo(() => {
-    const filtered = statusFilter === '전체'
+    const filtered = statusFilters.length === 0
       ? allFilteredData
-      : allFilteredData.filter(item => item.status === statusFilter);
+      : allFilteredData.filter(item => statusFilters.includes(item.status));
     return sortData(filtered);
-  }, [allFilteredData, statusFilter, sortConfig]);
+  }, [allFilteredData, statusFilters, sortConfig]);
 
   const yearTotalRev = useMemo(() => {
     const displayYear = Math.max(...selectedYears);
@@ -1571,7 +1584,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
             isPending={isPending}
             openEditModal={openEditModal} handleDeleteItem={handleDeleteItem} user={user}
             isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen}
-            statusFilter={statusFilter} setStatusFilter={setStatusFilter}
+            statusFilters={statusFilters} toggleStatusFilter={toggleStatusFilter}
             sortConfig={sortConfig} requestSort={requestSort}
             yearFilter={yearFilter} setYearFilter={setYearFilter} availableYears={availableYears}
             setSelectedIds={setSelectedIds}
@@ -1590,7 +1603,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
             isPending={isPending}
             openEditModal={openEditModal} handleDeleteItem={handleDeleteItem} user={user}
             isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen}
-            statusFilter="견적제출중" setStatusFilter={() => { }}
+            statusFilters={['견적제출중']} toggleStatusFilter={() => { }}
             hideFilter={true}
             yearFilter={yearFilter} setYearFilter={setYearFilter} availableYears={availableYears}
             sortConfig={sortConfig} requestSort={requestSort}
@@ -1610,7 +1623,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
             isPending={isPending}
             openEditModal={openEditModal} handleDeleteItem={handleDeleteItem} user={user}
             isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen}
-            statusFilter="업체미선정" setStatusFilter={() => { }}
+            statusFilters={['업체미선정']} toggleStatusFilter={() => { }}
             hideFilter={true}
             yearFilter={yearFilter} setYearFilter={setYearFilter} availableYears={availableYears}
             sortConfig={sortConfig} requestSort={requestSort}
@@ -1630,7 +1643,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
             isPending={isPending}
             openEditModal={openEditModal} handleDeleteItem={handleDeleteItem} user={user}
             isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen}
-            statusFilter="착수완료 진행" setStatusFilter={() => { }}
+            statusFilters={['착수완료 진행']} toggleStatusFilter={() => { }}
             hideFilter={true}
             yearFilter={yearFilter} setYearFilter={setYearFilter} availableYears={availableYears}
             sortConfig={sortConfig} requestSort={requestSort}
@@ -1650,7 +1663,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
             isPending={isPending}
             openEditModal={openEditModal} handleDeleteItem={handleDeleteItem} user={user}
             isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen}
-            statusFilter="완료 마감 대기" setStatusFilter={() => { }}
+            statusFilters={['완료 마감 대기']} toggleStatusFilter={() => { }}
             hideFilter={true}
             yearFilter={yearFilter} setYearFilter={setYearFilter} availableYears={availableYears}
             sortConfig={sortConfig} requestSort={requestSort}
@@ -1671,7 +1684,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
             isPending={isPending}
             openEditModal={openEditModal} handleDeleteItem={handleDeleteItem} user={user}
             isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen}
-            statusFilter="세금계산서 발행 완료" setStatusFilter={() => { }}
+            statusFilters={['세금계산서 발행 완료']} toggleStatusFilter={() => { }}
             hideFilter={true}
             yearFilter={yearFilter} setYearFilter={setYearFilter} availableYears={availableYears}
             statusDateKey="세금계산서 발행 완료"
@@ -1693,7 +1706,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
             isPending={isPending}
             openEditModal={openEditModal} handleDeleteItem={handleDeleteItem} user={user}
             isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen}
-            statusFilter="수금 완료" setStatusFilter={() => { }}
+            statusFilters={['수금 완료']} toggleStatusFilter={() => { }}
             hideFilter={true}
             yearFilter={yearFilter} setYearFilter={setYearFilter} availableYears={availableYears}
             statusDateKey="수금 완료"
