@@ -311,12 +311,38 @@ const TableRow = memo(({ item, isSelected, onOpen, onToggle, onDelete, userRole,
                         {mergedList.map((sub, i) => {
                             const subRev = sub.discountAmount > 0 ? sub.discountAmount : sub.estimateAmount || 0;
                             const subSc = STATUS_COLORS[sub.status] || { bg: 'rgba(99,102,241,0.1)', border: 'rgba(99,102,241,0.3)', text: '#818cf8' };
+                            const subPhotos = Array.isArray(sub.finalProductPhotos) ? sub.finalProductPhotos : [];
+                            const subTaxInv = Array.isArray(sub.taxInvoiceImages) ? sub.taxInvoiceImages : [];
+                            const subAgree = Array.isArray(sub.agreementImages) ? sub.agreementImages : [];
                             return (
-                                <div key={sub.id || i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.28rem 0.6rem', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                <div key={sub.id || i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.35rem 0.6rem', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)', flexWrap: 'wrap' }}>
                                     <span style={{ fontSize: '0.63rem', color: '#475569', minWidth: '14px' }}>{i + 1}</span>
-                                    <span style={{ flex: 1, fontSize: '0.78rem', color: '#cbd5e1', fontWeight: '500' }}>{sub.project}</span>
+                                    <span style={{ flex: 1, fontSize: '0.78rem', color: '#cbd5e1', fontWeight: '500', minWidth: '120px' }}>{sub.project}</span>
                                     <span style={{ fontSize: '0.74rem', color: '#34d399', fontWeight: '700', flexShrink: 0 }}>₩{Number(subRev).toLocaleString('ko-KR')}</span>
                                     <span style={{ display: 'inline-flex', padding: '0.1rem 0.45rem', background: subSc.bg, border: `1px solid ${subSc.border}`, color: subSc.text, borderRadius: '12px', fontSize: '0.63rem', fontWeight: '600', flexShrink: 0 }}>{sub.status}</span>
+                                    {/* 첨부파일 */}
+                                    <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
+                                        {sub.quotePdfUrl && (
+                                            <button onClick={e => { e.stopPropagation(); window.open(sub.quotePdfUrl, '_blank'); }}
+                                                style={badgeBtn('#10b981', 'rgba(16,185,129,0.12)', 'rgba(16,185,129,0.35)')}>📄 견적서</button>
+                                        )}
+                                        {sub.mailPdfUrl && (
+                                            <button onClick={e => { e.stopPropagation(); window.open(sub.mailPdfUrl, '_blank'); }}
+                                                style={badgeBtn('#818cf8', 'rgba(99,102,241,0.12)', 'rgba(99,102,241,0.35)')}>📧 메일</button>
+                                        )}
+                                        {subPhotos.length > 0 && (
+                                            <button onClick={e => { e.stopPropagation(); onShowPhotos && onShowPhotos(subPhotos, `${sub.project} 사진`); }}
+                                                style={badgeBtn('#f59e0b', 'rgba(245,158,11,0.12)', 'rgba(245,158,11,0.35)')}>🖼️ {subPhotos.length}장</button>
+                                        )}
+                                        {subTaxInv.length > 0 && (
+                                            <button onClick={e => { e.stopPropagation(); onShowPhotos && onShowPhotos(subTaxInv, `${sub.project} 세금계산서`); }}
+                                                style={badgeBtn('#ec4899', 'rgba(236,72,153,0.12)', 'rgba(236,72,153,0.35)')}>🧾 계산서</button>
+                                        )}
+                                        {subAgree.length > 0 && (
+                                            <button onClick={e => { e.stopPropagation(); onShowPhotos && onShowPhotos(subAgree, `${sub.project} 합의서`); }}
+                                                style={badgeBtn('#38bdf8', 'rgba(56,189,248,0.12)', 'rgba(56,189,248,0.35)')}>📋 합의서</button>
+                                        )}
+                                    </div>
                                 </div>
                             );
                         })}
