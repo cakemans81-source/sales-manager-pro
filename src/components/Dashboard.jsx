@@ -1684,6 +1684,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
             sortConfig={sortConfig} requestSort={requestSort}
             setSelectedIds={setSelectedIds}
             onToggleStar={handleToggleStar}
+            onMerge={handleOpenMerge}
           />
         )}
 
@@ -1704,6 +1705,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
             sortConfig={sortConfig} requestSort={requestSort}
             setSelectedIds={setSelectedIds}
             onToggleStar={handleToggleStar}
+            onMerge={handleOpenMerge}
           />
         )}
 
@@ -1724,6 +1726,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
             sortConfig={sortConfig} requestSort={requestSort}
             setSelectedIds={setSelectedIds}
             onToggleStar={handleToggleStar}
+            onMerge={handleOpenMerge}
           />
         )}
 
@@ -1744,6 +1747,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
             sortConfig={sortConfig} requestSort={requestSort}
             setSelectedIds={setSelectedIds}
             onToggleStar={handleToggleStar}
+            onMerge={handleOpenMerge}
           />
         )}
 
@@ -1766,6 +1770,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
             sortConfig={sortConfig} requestSort={requestSort}
             setSelectedIds={setSelectedIds}
             onToggleStar={handleToggleStar}
+            onMerge={handleOpenMerge}
           />
         )}
 
@@ -1788,6 +1793,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
             sortConfig={sortConfig} requestSort={requestSort}
             setSelectedIds={setSelectedIds}
             onToggleStar={handleToggleStar}
+            onMerge={handleOpenMerge}
           />
         )}
 
