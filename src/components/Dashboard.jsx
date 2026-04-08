@@ -589,6 +589,9 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
         delete payload.imageMail;       // 레거시 base64 필드
         delete payload.imageEstimate;   // 레거시 base64 필드
         delete payload.imageProduct;    // 레거시 base64 필드
+        delete payload.mergedProjects;  // 병합 전용 필드 (일반 저장 시 제외)
+        delete payload.mergedInto;      // 병합 전용 필드
+        delete payload.isMerged;        // 병합 전용 필드
 
         const { error } = editingItemId
           ? await supabase.from('sales_data').update(payload).eq('id', editingItemId)
