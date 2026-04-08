@@ -406,7 +406,11 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
   // 병합 실행
   const handleMergeConfirm = async (mergeConfig) => {
     const targetProjects = salesData.filter(item => mergeTargetIds.includes(item.id));
-    if (targetProjects.length < 2) return;
+    console.log('[병합] mergeTargetIds:', mergeTargetIds, 'targetProjects:', targetProjects.length);
+    if (targetProjects.length < 2) {
+      setNotification({ type: 'error', message: `병합 대상 프로젝트를 찾을 수 없습니다 (${targetProjects.length}건). 다시 선택해주세요.` });
+      return;
+    }
     const firstProject = targetProjects[0];
     const now = new Date();
     const dateStr = `${now.getFullYear()}.${now.getMonth() + 1}.${now.getDate()}`;
