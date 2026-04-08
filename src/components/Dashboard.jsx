@@ -27,6 +27,7 @@ import QuotationHelperTab from './dashboard/QuotationHelperTab';
 import ContactsTab from './dashboard/ContactsTab';
 import ZeroEstimateWarning from './dashboard/ZeroEstimateWarning';
 import StarredItemsWidget from './dashboard/StarredItemsWidget';
+import CompanyIntroPage from './dashboard/CompanyIntroPage';
 import MergeModal from './dashboard/MergeModal';
 import { formatDate, getTodayFormatted } from '../lib/dateUtils';
 import { GripVertical, Lock, Unlock } from 'lucide-react';
@@ -1836,6 +1837,10 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
             setYearlyTargets={setYearlyTargets} years={years} passwordForm={passwordForm}
             setPasswordForm={setPasswordForm} handleUpdatePassword={handleUpdatePassword}
           />
+        )}
+
+        {activeTab === 'company_intro' && (
+          <CompanyIntroPage />
         )}
       </main >
 

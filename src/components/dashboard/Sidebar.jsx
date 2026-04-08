@@ -173,6 +173,33 @@ const Sidebar = ({ user, onLogout, activeTab, setActiveTab, users, roleNames, is
                 </div>
             </nav>
 
+            {/* ── 회사소개서 리뉴얼 진입 버튼 ── */}
+            <div style={{ padding: '0.5rem 0.6rem 0.2rem' }}>
+                <button
+                    onClick={() => { setActiveTab('company_intro'); setIsSidebarOpen(false); }}
+                    style={{
+                        width: '100%',
+                        display: 'flex', alignItems: 'center', gap: '0.5rem',
+                        padding: '0.6rem 0.9rem',
+                        borderRadius: '10px', border: 'none',
+                        background: activeTab === 'company_intro'
+                            ? 'linear-gradient(135deg, #6366f1, #818cf8)'
+                            : 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(129,140,248,0.1))',
+                        color: activeTab === 'company_intro' ? '#fff' : '#6366f1',
+                        cursor: 'pointer', fontSize: '0.8rem', fontWeight: '800',
+                        boxShadow: activeTab === 'company_intro'
+                            ? '0 4px 16px rgba(99,102,241,0.4)'
+                            : '0 2px 8px rgba(99,102,241,0.12)',
+                        transition: 'all 0.2s', letterSpacing: '0.01em',
+                        border: activeTab === 'company_intro' ? 'none' : '1px solid rgba(99,102,241,0.25)',
+                    }}
+                    onMouseEnter={e => { if (activeTab !== 'company_intro') { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(99,102,241,0.25), rgba(129,140,248,0.18))'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(99,102,241,0.22)'; } }}
+                    onMouseLeave={e => { if (activeTab !== 'company_intro') { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(129,140,248,0.1))'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(99,102,241,0.12)'; } }}
+                >
+                    ✨ 회사소개서 리뉴얼
+                </button>
+            </div>
+
             {/* ── 최하단 고정 메뉴 영역 ── */}
             <div className="sidebar-bottom-nav">
                 <div className="nav-divider" style={{ margin: '0 0 0.5rem' }}></div>
