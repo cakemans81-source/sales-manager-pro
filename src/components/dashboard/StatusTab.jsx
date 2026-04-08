@@ -1,5 +1,5 @@
 import React, { memo, useState, useEffect } from 'react';
-import { FileSpreadsheet, Upload, Download, FileText, Database, Plus, Trash2, ChevronUp, ChevronDown, X, Image, Star } from 'lucide-react';
+import { FileSpreadsheet, Upload, Download, FileText, Database, Plus, Trash2, ChevronUp, ChevronDown, X, Image, Star, GitMerge } from 'lucide-react';
 import { formatDate } from '../../lib/dateUtils';
 
 // ─────────────────────────────────────────────────────────
@@ -111,25 +111,27 @@ const STATUS_COLORS = {
 };
 
 const TableRow = memo(({ item, isSelected, onOpen, onToggle, onDelete, userRole, onShowPhotos, rowIndex, onToggleStar }) => {
+    const [expanded, setExpanded] = useState(false);
     const photos = Array.isArray(item.finalProductPhotos) ? item.finalProductPhotos : [];
     const taxInvoices = Array.isArray(item.taxInvoiceImages) ? item.taxInvoiceImages : [];
     const hasAnyAttachment = item.quotePdfUrl || item.mailPdfUrl || photos.length > 0 || taxInvoices.length > 0;
     const sc = STATUS_COLORS[item.status] || { bg: 'rgba(99,102,241,0.1)', border: 'rgba(99,102,241,0.3)', text: '#818cf8' };
+    const mergedList = Array.isArray(item.mergedProjects) ? item.mergedProjects : [];
 
     const revenue = item.discountAmount > 0 ? item.discountAmount : item.estimateAmount || 0;
     const hasDiscount = item.discountAmount > 0 && item.estimateAmount > 0 && item.discountAmount !== item.estimateAmount;
 
-    // 이 행의 배경 (교대색)
     const rowBg = rowIndex % 2 === 0 ? 'rgba(15,23,42,0.0)' : 'rgba(255,255,255,0.018)';
 
     return (
+        <>
         <tr
             onClick={() => onOpen(item)}
             style={{
                 cursor: 'pointer',
-                background: isSelected ? 'rgba(99,102,241,0.12)' : item.isStarred ? 'rgba(245,158,11,0.04)' : rowBg,
+                background: isSelected ? 'rgba(99,102,241,0.12)' : item.isStarred ? 'rgba(245,158,11,0.04)' : item.isMerged ? 'rgba(99,102,241,0.06)' : rowBg,
                 transition: 'background 0.15s',
-                borderLeft: item.isStarred ? '3px solid rgba(245,158,11,0.7)' : '3px solid transparent',
+                borderLeft: item.isMerged ? '3px solid rgba(99,102,241,0.6)' : item.isStarred ? '3px solid rgba(245,158,11,0.7)' : '3px solid transparent',
             }}
             className={`table-row-hover ${isSelected ? 'selected-row' : ''}`}
         >
@@ -218,6 +220,15 @@ const TableRow = memo(({ item, isSelected, onOpen, onToggle, onDelete, userRole,
             {/* ⑥ 프로젝트명 */}
             <td style={{ padding: '0.5rem 0.5rem', verticalAlign: 'middle', maxWidth: '240px' }}>
                 <div style={{ fontSize: '0.8rem', color: '#cbd5e1', fontWeight: '500', lineHeight: 1.4, wordBreak: 'keep-all' }}>{item.project}</div>
+                {item.isMerged && mergedList.length > 0 && (
+                    <button
+                        type="button"
+                        onClick={e => { e.stopPropagation(); setExpanded(v => !v); }}
+                        style={{ marginTop: '0.3rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.4)', color: '#818cf8', borderRadius: '5px', padding: '0.15rem 0.5rem', cursor: 'pointer', fontSize: '0.68rem', fontWeight: '700' }}
+                    >
+                        <GitMerge size={11} /> {expanded ? '▲ 접기' : `▼ 원본 ${mergedList.length}건`}
+                    </button>
+                )}
             </td>
 
             {/* ⑦ 금액 */}
@@ -290,6 +301,30 @@ const TableRow = memo(({ item, isSelected, onOpen, onToggle, onDelete, userRole,
                 )}
             </td>
         </tr>
+        {item.isMerged && expanded && mergedList.length > 0 && (
+            <tr style={{ background: 'rgba(99,102,241,0.04)', borderLeft: '3px solid rgba(99,102,241,0.3)' }}>
+                <td colSpan={99} style={{ padding: '0.5rem 1.5rem 0.8rem 3.5rem', borderBottom: '1px solid rgba(99,102,241,0.12)' }}>
+                    <div style={{ fontSize: '0.7rem', color: '#818cf8', fontWeight: '700', marginBottom: '0.4rem' }}>
+                        병합된 원본 프로젝트 ({mergedList.length}건)
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.28rem' }}>
+                        {mergedList.map((sub, i) => {
+                            const subRev = sub.discountAmount > 0 ? sub.discountAmount : sub.estimateAmount || 0;
+                            const subSc = STATUS_COLORS[sub.status] || { bg: 'rgba(99,102,241,0.1)', border: 'rgba(99,102,241,0.3)', text: '#818cf8' };
+                            return (
+                                <div key={sub.id || i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.28rem 0.6rem', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                    <span style={{ fontSize: '0.63rem', color: '#475569', minWidth: '14px' }}>{i + 1}</span>
+                                    <span style={{ flex: 1, fontSize: '0.78rem', color: '#cbd5e1', fontWeight: '500' }}>{sub.project}</span>
+                                    <span style={{ fontSize: '0.74rem', color: '#34d399', fontWeight: '700', flexShrink: 0 }}>₩{Number(subRev).toLocaleString('ko-KR')}</span>
+                                    <span style={{ display: 'inline-flex', padding: '0.1rem 0.45rem', background: subSc.bg, border: `1px solid ${subSc.border}`, color: subSc.text, borderRadius: '12px', fontSize: '0.63rem', fontWeight: '600', flexShrink: 0 }}>{sub.status}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </td>
+            </tr>
+        )}
+        </>
     );
 });
 TableRow.displayName = 'TableRow';
@@ -326,6 +361,7 @@ const StatusTab = ({
     statusDateKey = null,
     setSelectedIds,    // displayData 기준 전체선택 제어용
     onToggleStar,      // (id) => void  별표 토글
+    onMerge,           // (ids) => void  병합 모달 열기
 }) => {
     const statuses = ['전체', '견적제출중', '업체미선정', '착수완료 진행', '완료 마감 대기', '세금계산서 발행 완료', '수금 완료', '무상작업'];
     const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
@@ -540,6 +576,12 @@ const StatusTab = ({
                 <button className="btn btn-ghost" onClick={fetchSalesData} title="중앙 지휘소 데이터 동기화">
                     <Database size={18} /> 새로고침
                 </button>
+                {selectedInDisplay.length >= 2 && user.role === 'admin' && onMerge && (
+                    <button className="btn btn-primary" onClick={() => onMerge(selectedInDisplay)}
+                        style={{ background: 'linear-gradient(135deg,#6366f1,#818cf8)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <GitMerge size={16} /> {selectedInDisplay.length}건 병합
+                    </button>
+                )}
                 {selectedInDisplay.length > 0 && user.role === 'admin' && (
                     <button className="btn btn-primary" onClick={handleBulkDelete} style={{ background: '#ef4444' }}>
                         <Trash2 size={18} /> {selectedInDisplay.length}건 일괄 삭제

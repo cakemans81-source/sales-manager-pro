@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useTransition, useCallback } from 'react';
-import { Plus, Check, AlertCircle, Database, Menu, Star } from 'lucide-react';
+import { Plus, Check, AlertCircle, Database, Menu, Star, GitMerge } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import * as XLSX from 'xlsx';
 import ExcelJS from 'exceljs';
@@ -27,6 +27,7 @@ import QuotationHelperTab from './dashboard/QuotationHelperTab';
 import ContactsTab from './dashboard/ContactsTab';
 import ZeroEstimateWarning from './dashboard/ZeroEstimateWarning';
 import StarredItemsWidget from './dashboard/StarredItemsWidget';
+import MergeModal from './dashboard/MergeModal';
 import { formatDate, getTodayFormatted } from '../lib/dateUtils';
 import { GripVertical, Lock, Unlock } from 'lucide-react';
 
@@ -59,8 +60,8 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
     return parsed.map(item => ({ ...item, company: item.company || '(주)이루' }));
   });
 
-  // 회사별 필터링된 기반 데이터 (모든 위젯에서 사용)
-  const companySalesData = useMemo(() => salesData.filter(companyFilter), [salesData, companyMode]);
+  // 회사별 필터링된 기반 데이터 (병합된 원본 항목 제외)
+  const companySalesData = useMemo(() => salesData.filter(item => companyFilter(item) && !item.mergedInto), [salesData, companyMode]);
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -120,6 +121,8 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
   const [isSaving, setIsSaving] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isMergeModalOpen, setIsMergeModalOpen] = useState(false);
+  const [mergeTargetIds, setMergeTargetIds] = useState([]);
   const [statusFilters, setStatusFilters] = useState([]);
 
   const toggleStatusFilter = (status) => {
@@ -203,10 +206,16 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
         const formatted = data.map(item => ({
           ...item,
           date: formatDate(item.date),
-          // company가 없는 레거시 데이터는 (주)이루로 기본 처리
           company: item.company || '(주)이루',
-          // DB의 is_starred(snake_case) → JS의 isStarred(camelCase) 변환
-          isStarred: item.is_starred === true || item.isStarred === true
+          isStarred: item.is_starred === true || item.isStarred === true,
+          // mergedProjects: DB에서 문자열로 올 수도 있으므로 파싱
+          mergedProjects: (() => {
+            if (!item.mergedProjects) return [];
+            if (typeof item.mergedProjects === 'string') {
+              try { return JSON.parse(item.mergedProjects); } catch { return []; }
+            }
+            return Array.isArray(item.mergedProjects) ? item.mergedProjects : [];
+          })(),
         }));
         setSalesData(formatted);
         localStorage.setItem('smp_sales_data', JSON.stringify(formatted));
@@ -388,6 +397,71 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
     return sortData(filtered);
   }, [baseFilteredData, statusFilters, sortConfig]);
 
+  // 병합 모달 열기
+  const handleOpenMerge = (ids) => {
+    setMergeTargetIds(ids);
+    setIsMergeModalOpen(true);
+  };
+
+  // 병합 실행
+  const handleMergeConfirm = async (mergeConfig) => {
+    const targetProjects = salesData.filter(item => mergeTargetIds.includes(item.id));
+    if (targetProjects.length < 2) return;
+    const firstProject = targetProjects[0];
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}.${now.getMonth() + 1}.${now.getDate()}`;
+    const newId = Date.now();
+
+    const mergedProject = {
+      id: newId,
+      company: firstProject.company,
+      customer: firstProject.customer,
+      customerContact: firstProject.customerContact || '',
+      customerPosition: firstProject.customerPosition || '',
+      customerPhone: firstProject.customerPhone || '',
+      representative: firstProject.representative,
+      project: mergeConfig.projectName,
+      estimateAmount: Number(mergeConfig.estimateAmount) || 0,
+      discountAmount: Number(mergeConfig.discountAmount) || 0,
+      status: mergeConfig.status,
+      date: dateStr,
+      notes: mergeConfig.note,
+      statusDates: { [mergeConfig.status]: dateStr },
+      isMerged: true,
+      mergedProjects: targetProjects,
+      quotePdfUrl: '', mailPdfUrl: '',
+      finalProductPhotos: [], agreementImages: [], taxInvoiceImages: [],
+      isStarred: false,
+    };
+
+    try {
+      setIsSaving(true);
+      if (supabase) {
+        const { error: insErr } = await supabase.from('sales_data').insert([{
+          ...mergedProject,
+          mergedProjects: JSON.stringify(mergedProject.mergedProjects),
+        }]);
+        if (insErr) throw insErr;
+        for (const orig of targetProjects) {
+          await supabase.from('sales_data').update({ mergedInto: String(newId) }).eq('id', orig.id);
+        }
+        await fetchSalesData();
+      } else {
+        setSalesData(prev => [
+          ...prev.map(item => mergeTargetIds.includes(item.id) ? { ...item, mergedInto: String(newId) } : item),
+          mergedProject,
+        ]);
+      }
+      setSelectedIds([]);
+      setIsMergeModalOpen(false);
+      setNotification({ type: 'success', message: `${targetProjects.length}건이 1건으로 병합되었습니다.` });
+    } catch (err) {
+      setNotification({ type: 'error', message: '병합 실패: ' + err.message });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // ── 프로젝트 통합 현황 전용: 연도 필터 없이 전체 데이터 ──
   const getAllFilterDate = (item) => {
     if (statusFilters.length === 1 && item.statusDates?.[statusFilters[0]]) {
@@ -400,7 +474,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
   };
 
   const allFilteredData = useMemo(() => {
-    let filtered = salesData.filter(companyFilter);
+    let filtered = salesData.filter(item => companyFilter(item) && !item.mergedInto);
 
     // 연도 필터: 상태 필터 활성 시 해당 상태 날짜 기준
     if (yearFilter && yearFilter !== '전체') {
@@ -1589,6 +1663,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
             yearFilter={yearFilter} setYearFilter={setYearFilter} availableYears={availableYears}
             setSelectedIds={setSelectedIds}
             onToggleStar={handleToggleStar}
+            onMerge={handleOpenMerge}
           />
         )}
 
@@ -1597,8 +1672,8 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
             canEdit={canEdit} downloadTemplate={downloadTemplate} handleExcelUpload={handleExcelUpload}
             exportToExcel={exportToExcel} exportToPDF={exportToPDF} fetchSalesData={fetchSalesData}
             setIsModalOpen={openAddModal} selectedIds={selectedIds} handleBulkDelete={handleBulkDelete}
-            salesData={sortData(applySearch(filterByStatusDateYear(salesData.filter(d => d.status === '견적제출중' && companyFilter(d)), '견적제출중')))} config={{ ...config, isCompactView: true }}
-            toggleAllSelection={() => handleToggleAllSelection(applySearch(filterByStatusDateYear(salesData.filter(d => d.status === '견적제출중' && companyFilter(d)), '견적제출중')))}
+            salesData={sortData(applySearch(filterByStatusDateYear(salesData.filter(d => d.status === '견적제출중' && companyFilter(d) && !d.mergedInto), '견적제출중')))} config={{ ...config, isCompactView: true }}
+            toggleAllSelection={() => handleToggleAllSelection(applySearch(filterByStatusDateYear(salesData.filter(d => d.status === '견적제출중' && companyFilter(d) && !d.mergedInto), '견적제출중')))}
             toggleSelection={(e, id) => { e.stopPropagation(); handleToggleSelection(id); }}
             isPending={isPending}
             openEditModal={openEditModal} handleDeleteItem={handleDeleteItem} user={user}
@@ -1617,8 +1692,8 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
             canEdit={canEdit} downloadTemplate={downloadTemplate} handleExcelUpload={handleExcelUpload}
             exportToExcel={exportToExcel} exportToPDF={exportToPDF} fetchSalesData={fetchSalesData}
             setIsModalOpen={openAddModal} selectedIds={selectedIds} handleBulkDelete={handleBulkDelete}
-            salesData={sortData(applySearch(filterByStatusDateYear(salesData.filter(d => d.status === '업체미선정' && companyFilter(d)), '업체미선정')))} config={{ ...config, isCompactView: true }}
-            toggleAllSelection={() => handleToggleAllSelection(applySearch(filterByStatusDateYear(salesData.filter(d => d.status === '업체미선정' && companyFilter(d)), '업체미선정')))}
+            salesData={sortData(applySearch(filterByStatusDateYear(salesData.filter(d => d.status === '업체미선정' && companyFilter(d) && !d.mergedInto), '업체미선정')))} config={{ ...config, isCompactView: true }}
+            toggleAllSelection={() => handleToggleAllSelection(applySearch(filterByStatusDateYear(salesData.filter(d => d.status === '업체미선정' && companyFilter(d) && !d.mergedInto), '업체미선정')))}
             toggleSelection={(e, id) => { e.stopPropagation(); handleToggleSelection(id); }}
             isPending={isPending}
             openEditModal={openEditModal} handleDeleteItem={handleDeleteItem} user={user}
@@ -1637,8 +1712,8 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
             canEdit={canEdit} downloadTemplate={downloadTemplate} handleExcelUpload={handleExcelUpload}
             exportToExcel={exportToExcel} exportToPDF={exportToPDF} fetchSalesData={fetchSalesData}
             setIsModalOpen={openAddModal} selectedIds={selectedIds} handleBulkDelete={handleBulkDelete}
-            salesData={sortData(applySearch(filterByStatusDateYear(salesData.filter(d => d.status === '착수완료 진행' && companyFilter(d)), '착수완료 진행')))} config={{ ...config, isCompactView: true }}
-            toggleAllSelection={() => handleToggleAllSelection(applySearch(filterByStatusDateYear(salesData.filter(d => d.status === '착수완료 진행' && companyFilter(d)), '착수완료 진행')))}
+            salesData={sortData(applySearch(filterByStatusDateYear(salesData.filter(d => d.status === '착수완료 진행' && companyFilter(d) && !d.mergedInto), '착수완료 진행')))} config={{ ...config, isCompactView: true }}
+            toggleAllSelection={() => handleToggleAllSelection(applySearch(filterByStatusDateYear(salesData.filter(d => d.status === '착수완료 진행' && companyFilter(d) && !d.mergedInto), '착수완료 진행')))}
             toggleSelection={(e, id) => { e.stopPropagation(); handleToggleSelection(id); }}
             isPending={isPending}
             openEditModal={openEditModal} handleDeleteItem={handleDeleteItem} user={user}
@@ -1657,8 +1732,8 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
             canEdit={canEdit} downloadTemplate={downloadTemplate} handleExcelUpload={handleExcelUpload}
             exportToExcel={exportToExcel} exportToPDF={exportToPDF} fetchSalesData={fetchSalesData}
             setIsModalOpen={openAddModal} selectedIds={selectedIds} handleBulkDelete={handleBulkDelete}
-            salesData={sortData(applySearch(filterByStatusDateYear(salesData.filter(d => d.status === '완료 마감 대기' && companyFilter(d)), '완료 마감 대기')))} config={{ ...config, isCompactView: true }}
-            toggleAllSelection={() => handleToggleAllSelection(applySearch(filterByStatusDateYear(salesData.filter(d => d.status === '완료 마감 대기' && companyFilter(d)), '완료 마감 대기')))}
+            salesData={sortData(applySearch(filterByStatusDateYear(salesData.filter(d => d.status === '완료 마감 대기' && companyFilter(d) && !d.mergedInto), '완료 마감 대기')))} config={{ ...config, isCompactView: true }}
+            toggleAllSelection={() => handleToggleAllSelection(applySearch(filterByStatusDateYear(salesData.filter(d => d.status === '완료 마감 대기' && companyFilter(d) && !d.mergedInto), '완료 마감 대기')))}
             toggleSelection={(e, id) => { e.stopPropagation(); handleToggleSelection(id); }}
             isPending={isPending}
             openEditModal={openEditModal} handleDeleteItem={handleDeleteItem} user={user}
@@ -1677,9 +1752,9 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
             canEdit={canEdit} downloadTemplate={downloadTemplate} handleExcelUpload={handleExcelUpload}
             exportToExcel={exportToExcel} exportToPDF={exportToPDF} fetchSalesData={fetchSalesData}
             setIsModalOpen={openAddModal} selectedIds={selectedIds} handleBulkDelete={handleBulkDelete}
-            salesData={sortData(applySearch(filterByStatusDateYear(salesData.filter(d => d.status === '세금계산서 발행 완료' && companyFilter(d)), '세금계산서 발행 완료')))}
+            salesData={sortData(applySearch(filterByStatusDateYear(salesData.filter(d => d.status === '세금계산서 발행 완료' && companyFilter(d) && !d.mergedInto), '세금계산서 발행 완료')))}
             config={{ ...config, isCompactView: true }}
-            toggleAllSelection={() => handleToggleAllSelection(applySearch(filterByStatusDateYear(salesData.filter(d => d.status === '세금계산서 발행 완료' && companyFilter(d)), '세금계산서 발행 완료')))}
+            toggleAllSelection={() => handleToggleAllSelection(applySearch(filterByStatusDateYear(salesData.filter(d => d.status === '세금계산서 발행 완료' && companyFilter(d) && !d.mergedInto), '세금계산서 발행 완료')))}
             toggleSelection={(e, id) => { e.stopPropagation(); handleToggleSelection(id); }}
             isPending={isPending}
             openEditModal={openEditModal} handleDeleteItem={handleDeleteItem} user={user}
@@ -1699,9 +1774,9 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
             canEdit={canEdit} downloadTemplate={downloadTemplate} handleExcelUpload={handleExcelUpload}
             exportToExcel={exportToExcel} exportToPDF={exportToPDF} fetchSalesData={fetchSalesData}
             setIsModalOpen={openAddModal} selectedIds={selectedIds} handleBulkDelete={handleBulkDelete}
-            salesData={sortData(applySearch(filterByStatusDateYear(salesData.filter(d => d.status === '수금 완료' && companyFilter(d)), '수금 완료')))}
+            salesData={sortData(applySearch(filterByStatusDateYear(salesData.filter(d => d.status === '수금 완료' && companyFilter(d) && !d.mergedInto), '수금 완료')))}
             config={{ ...config, isCompactView: true }}
-            toggleAllSelection={() => handleToggleAllSelection(applySearch(filterByStatusDateYear(salesData.filter(d => d.status === '수금 완료' && companyFilter(d)), '수금 완료')))}
+            toggleAllSelection={() => handleToggleAllSelection(applySearch(filterByStatusDateYear(salesData.filter(d => d.status === '수금 완료' && companyFilter(d) && !d.mergedInto), '수금 완료')))}
             toggleSelection={(e, id) => { e.stopPropagation(); handleToggleSelection(id); }}
             isPending={isPending}
             openEditModal={openEditModal} handleDeleteItem={handleDeleteItem} user={user}
@@ -1757,6 +1832,13 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
           contactsData={contactsData}
         />
       )}
+
+      <MergeModal
+        isOpen={isMergeModalOpen}
+        onClose={() => setIsMergeModalOpen(false)}
+        selectedProjects={salesData.filter(item => mergeTargetIds.includes(item.id))}
+        onConfirm={handleMergeConfirm}
+      />
 
       <PDFReportTemplate user={user} salesData={salesData} />
     </div >
