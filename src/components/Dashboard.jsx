@@ -441,10 +441,13 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
     try {
       setIsSaving(true);
       if (supabase) {
-        const { error: insErr } = await supabase.from('sales_data').insert([{
+        const mergePayload = {
           ...mergedProject,
           mergedProjects: JSON.stringify(mergedProject.mergedProjects),
-        }]);
+          is_starred: false,
+        };
+        delete mergePayload.isStarred;
+        const { error: insErr } = await supabase.from('sales_data').insert([mergePayload]);
         if (insErr) throw insErr;
         for (const orig of targetProjects) {
           await supabase.from('sales_data').update({ mergedInto: String(newId) }).eq('id', orig.id);
