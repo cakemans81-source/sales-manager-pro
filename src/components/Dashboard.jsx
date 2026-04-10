@@ -417,6 +417,13 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
     const dateStr = `${now.getFullYear()}.${now.getMonth() + 1}.${now.getDate()}`;
     const newId = Date.now();
 
+    // 이미 병합된 프로젝트가 타겟에 포함된 경우 하위 항목을 펼쳐서 저장
+    const flattenedSubProjects = targetProjects.flatMap(p =>
+      (p.isMerged && Array.isArray(p.mergedProjects) && p.mergedProjects.length > 0)
+        ? p.mergedProjects
+        : [p]
+    );
+
     const mergedProject = {
       id: newId,
       company: firstProject.company,
@@ -433,7 +440,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
       notes: mergeConfig.note,
       statusDates: { [mergeConfig.status]: dateStr },
       isMerged: true,
-      mergedProjects: targetProjects,
+      mergedProjects: flattenedSubProjects,
       quotePdfUrl: '', mailPdfUrl: '',
       finalProductPhotos: [], agreementImages: [], taxInvoiceImages: [],
       isStarred: false,
@@ -465,6 +472,32 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
       setNotification({ type: 'success', message: `${targetProjects.length}건이 1건으로 병합되었습니다.` });
     } catch (err) {
       setNotification({ type: 'error', message: '병합 실패: ' + err.message });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // 병합 해제
+  const handleUnmerge = async (mergedProjectId) => {
+    if (!window.confirm('병합을 해제하시겠습니까?\n원본 프로젝트들이 각각 복원됩니다.')) return;
+    try {
+      setIsSaving(true);
+      if (supabase) {
+        // 이 병합 프로젝트를 가리키는 모든 원본 프로젝트의 mergedInto 제거
+        await supabase.from('sales_data').update({ mergedInto: null }).eq('mergedInto', String(mergedProjectId));
+        // 병합 프로젝트 자체 삭제
+        await supabase.from('sales_data').delete().eq('id', mergedProjectId);
+        await fetchSalesData();
+      } else {
+        setSalesData(prev => prev
+          .filter(item => item.id !== mergedProjectId)
+          .map(item => item.mergedInto === String(mergedProjectId) ? { ...item, mergedInto: null } : item)
+        );
+      }
+      setSelectedIds([]);
+      setNotification({ type: 'success', message: '병합이 해제되었습니다. 원본 프로젝트들이 복원되었습니다.' });
+    } catch (err) {
+      setNotification({ type: 'error', message: '병합 해제 실패: ' + err.message });
     } finally {
       setIsSaving(false);
     }
@@ -1675,6 +1708,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
             setSelectedIds={setSelectedIds}
             onToggleStar={handleToggleStar}
             onMerge={handleOpenMerge}
+            onUnmerge={handleUnmerge}
           />
         )}
 
@@ -1696,6 +1730,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
             setSelectedIds={setSelectedIds}
             onToggleStar={handleToggleStar}
             onMerge={handleOpenMerge}
+            onUnmerge={handleUnmerge}
           />
         )}
 
@@ -1717,6 +1752,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
             setSelectedIds={setSelectedIds}
             onToggleStar={handleToggleStar}
             onMerge={handleOpenMerge}
+            onUnmerge={handleUnmerge}
           />
         )}
 
@@ -1738,6 +1774,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
             setSelectedIds={setSelectedIds}
             onToggleStar={handleToggleStar}
             onMerge={handleOpenMerge}
+            onUnmerge={handleUnmerge}
           />
         )}
 
@@ -1759,6 +1796,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
             setSelectedIds={setSelectedIds}
             onToggleStar={handleToggleStar}
             onMerge={handleOpenMerge}
+            onUnmerge={handleUnmerge}
           />
         )}
 
@@ -1782,6 +1820,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
             setSelectedIds={setSelectedIds}
             onToggleStar={handleToggleStar}
             onMerge={handleOpenMerge}
+            onUnmerge={handleUnmerge}
           />
         )}
 
@@ -1805,6 +1844,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
             setSelectedIds={setSelectedIds}
             onToggleStar={handleToggleStar}
             onMerge={handleOpenMerge}
+            onUnmerge={handleUnmerge}
           />
         )}
 

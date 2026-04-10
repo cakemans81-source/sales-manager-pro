@@ -110,7 +110,7 @@ const STATUS_COLORS = {
     '무상작업': { bg: 'rgba(100,116,139,0.15)', border: 'rgba(100,116,139,0.35)', text: '#94a3b8' },
 };
 
-const TableRow = memo(({ item, isSelected, onOpen, onToggle, onDelete, userRole, onShowPhotos, rowIndex, onToggleStar }) => {
+const TableRow = memo(({ item, isSelected, onOpen, onToggle, onDelete, userRole, onShowPhotos, rowIndex, onToggleStar, onUnmerge }) => {
     const [expanded, setExpanded] = useState(false);
     const photos = Array.isArray(item.finalProductPhotos) ? item.finalProductPhotos : [];
     const taxInvoices = Array.isArray(item.taxInvoiceImages) ? item.taxInvoiceImages : [];
@@ -304,8 +304,26 @@ const TableRow = memo(({ item, isSelected, onOpen, onToggle, onDelete, userRole,
         {item.isMerged && expanded && mergedList.length > 0 && (
             <tr style={{ background: 'rgba(99,102,241,0.04)', borderLeft: '3px solid rgba(99,102,241,0.3)' }}>
                 <td colSpan={99} style={{ padding: '0.5rem 1.5rem 0.8rem 3.5rem', borderBottom: '1px solid rgba(99,102,241,0.12)' }}>
-                    <div style={{ fontSize: '0.7rem', color: '#818cf8', fontWeight: '700', marginBottom: '0.4rem' }}>
-                        병합된 원본 프로젝트 ({mergedList.length}건)
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+                        <span style={{ fontSize: '0.7rem', color: '#818cf8', fontWeight: '700' }}>
+                            병합된 원본 프로젝트 ({mergedList.length}건)
+                        </span>
+                        {onUnmerge && (
+                            <button
+                                onClick={e => { e.stopPropagation(); onUnmerge(item.id); }}
+                                style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
+                                    background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.35)',
+                                    color: '#f87171', borderRadius: '6px', padding: '0.18rem 0.6rem',
+                                    cursor: 'pointer', fontSize: '0.68rem', fontWeight: '700',
+                                    transition: 'all 0.15s',
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.2)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; }}
+                            >
+                                🔓 병합 해제
+                            </button>
+                        )}
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.28rem' }}>
                         {mergedList.map((sub, i) => {
@@ -388,6 +406,7 @@ const StatusTab = ({
     setSelectedIds,    // displayData 기준 전체선택 제어용
     onToggleStar,      // (id) => void  별표 토글
     onMerge,           // (ids) => void  병합 모달 열기
+    onUnmerge,         // (mergedProjectId) => void  병합 해제
 }) => {
     const statuses = ['전체', '견적제출중', '업체미선정', '착수완료 진행', '완료 마감 대기', '세금계산서 발행 완료', '수금 완료', '무상작업'];
     const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
@@ -739,6 +758,7 @@ const StatusTab = ({
                                     userRole={user.role}
                                     onShowPhotos={(photos, title) => setViewerPhotos({ photos, title })}
                                     onToggleStar={onToggleStar || (() => { })}
+                                    onUnmerge={onUnmerge}
                                 />
                             ))}
                             {salesData.length === 0 && (
