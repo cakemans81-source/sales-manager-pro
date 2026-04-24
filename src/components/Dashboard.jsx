@@ -1122,12 +1122,13 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
         { header: '제품 사진 1', key: 'photo1', width: 20 },
         { header: '제품 사진 2', key: 'photo2', width: 20 },
         { header: '제품 사진 3', key: 'photo3', width: 20 },
+        { header: '견적 합의서', key: 'agreement', width: 20 },
       ];
 
       // 헤더 스타일: 셀 레벨로 직접 적용 (row-level fill이 이후 row에 상속되는 버그 방지)
       const headerRow = worksheet.getRow(1);
       headerRow.height = 28;
-      for (let ci = 1; ci <= 19; ci++) {
+      for (let ci = 1; ci <= 20; ci++) {
         const hc = headerRow.getCell(ci);
         hc.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } };
         hc.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
@@ -1194,6 +1195,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
           photo1: '',
           photo2: '',
           photo3: '',
+          agreement: '',
         });
 
         row.height = 24;
@@ -1209,7 +1211,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
         row.fill = rowFill;   // 행 전체 기본 배경 (모든 미작성 셀 포함)
 
         // ── 컬럼 인덱스(1-based)로 직접 접근하여 셀 레벨 fill 재확인 ──
-        for (let colIdx = 1; colIdx <= 19; colIdx++) {
+        for (let colIdx = 1; colIdx <= 20; colIdx++) {
           const c = row.getCell(colIdx);
           c.fill = rowFill;
           c.font = rowFont;
@@ -1269,6 +1271,16 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
             photoCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: pi === 0 ? 'FFE8F4FD' : pi === 1 ? 'FFEAF7EA' : 'FFFFF3E0' } };
             photoCell.alignment = { vertical: 'middle', horizontal: 'center' };
           });
+        }
+
+        // 견적 합의서: 첫 장을 하이퍼링크로 삽입 (여러 장이면 장 수 표시)
+        if (Array.isArray(item.agreementImages) && item.agreementImages.length > 0) {
+          const agCell = row.getCell('agreement');
+          const count = item.agreementImages.length;
+          agCell.value = { text: count > 1 ? `합의서 ${count}장 열기` : '합의서 열기', hyperlink: item.agreementImages[0] };
+          agCell.font = { color: { argb: 'FF0070C0' }, underline: true, size: 9, bold: true };
+          agCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0F2FE' } };
+          agCell.alignment = { vertical: 'middle', horizontal: 'center' };
         }
       }
 

@@ -114,7 +114,8 @@ const TableRow = memo(({ item, isSelected, onOpen, onToggle, onDelete, userRole,
     const [expanded, setExpanded] = useState(false);
     const photos = Array.isArray(item.finalProductPhotos) ? item.finalProductPhotos : [];
     const taxInvoices = Array.isArray(item.taxInvoiceImages) ? item.taxInvoiceImages : [];
-    const hasAnyAttachment = item.quotePdfUrl || item.mailPdfUrl || photos.length > 0 || taxInvoices.length > 0;
+    const agreements = Array.isArray(item.agreementImages) ? item.agreementImages : [];
+    const hasAnyAttachment = item.quotePdfUrl || item.mailPdfUrl || photos.length > 0 || taxInvoices.length > 0 || agreements.length > 0;
     const sc = STATUS_COLORS[item.status] || { bg: 'rgba(99,102,241,0.1)', border: 'rgba(99,102,241,0.3)', text: '#818cf8' };
     const mergedList = Array.isArray(item.mergedProjects) ? item.mergedProjects : [];
 
@@ -282,6 +283,12 @@ const TableRow = memo(({ item, isSelected, onOpen, onToggle, onDelete, userRole,
                             <button style={badgeBtn('#ec4899', 'rgba(236,72,153,0.12)', 'rgba(236,72,153,0.35)')}
                                 onClick={() => onShowPhotos(taxInvoices, "세금계산서")} title={`세금계산서 ${taxInvoices.length}장`}>
                                 🧾 {taxInvoices.length > 1 ? `계산서 ${taxInvoices.length}장` : '계산서'}
+                            </button>
+                        )}
+                        {agreements.length > 0 && (
+                            <button style={badgeBtn('#38bdf8', 'rgba(56,189,248,0.12)', 'rgba(56,189,248,0.35)')}
+                                onClick={() => onShowPhotos(agreements, "견적 합의서")} title={`견적 합의서 ${agreements.length}장`}>
+                                📋 {agreements.length > 1 ? `합의서 ${agreements.length}장` : '합의서'}
                             </button>
                         )}
                     </div>
