@@ -123,9 +123,8 @@ const ProjectModal = ({
 
     // ── 견적 합의서 이미지 ──
     const agreementUploadingRef = useRef(false);
-    const handleAgreementImagesUpload = async (e) => {
+    const uploadAgreementFiles = async (files) => {
         if (agreementUploadingRef.current) return;
-        const files = Array.from(e.target.files);
         if (!files.length) return;
         const invalid = files.find(f => !f.type.startsWith('image/'));
         if (invalid) { setAgreementError('이미지 파일만 업로드할 수 있습니다.'); return; }
@@ -148,6 +147,28 @@ const ProjectModal = ({
         } finally {
             setAgreementUploading(false);
             agreementUploadingRef.current = false;
+        }
+    };
+    const handleAgreementImagesUpload = (e) => uploadAgreementFiles(Array.from(e.target.files));
+
+    // 클립보드 붙여넣기로 합의서 이미지 업로드
+    const handleAgreementPaste = (e) => {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+        const files = [];
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].kind === 'file' && items[i].type.startsWith('image/')) {
+                const f = items[i].getAsFile();
+                if (f) {
+                    const ext = (f.type.split('/')[1] || 'png').replace(/[^a-zA-Z0-9]/g, '');
+                    const renamed = new File([f], `clipboard_${Date.now()}.${ext}`, { type: f.type });
+                    files.push(renamed);
+                }
+            }
+        }
+        if (files.length > 0) {
+            e.preventDefault();
+            uploadAgreementFiles(files);
         }
     };
 
@@ -430,7 +451,13 @@ const ProjectModal = ({
                                     </div>
 
                                     {/* 견적 합의서 이미지 */}
-                                    <div style={{ background: 'rgba(14,165,233,0.05)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(14,165,233,0.15)' }}>
+                                    <div
+                                        tabIndex={0}
+                                        onPaste={handleAgreementPaste}
+                                        style={{ background: 'rgba(14,165,233,0.05)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(14,165,233,0.15)', outline: 'none' }}
+                                        onFocus={e => { e.currentTarget.style.border = '1px solid rgba(14,165,233,0.5)'; e.currentTarget.style.boxShadow = '0 0 0 2px rgba(14,165,233,0.15)'; }}
+                                        onBlur={e => { e.currentTarget.style.border = '1px solid rgba(14,165,233,0.15)'; e.currentTarget.style.boxShadow = 'none'; }}
+                                    >
                                         <h4 style={{ margin: '0 0 0.75rem 0', color: '#0ea5e9', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><FileImage size={14} /> 견적 합의서 이미지</h4>
                                         {renderImageGrid(formData.agreementImages, handleAgreementImageRemove, '#0ea5e9', '합의서')}
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -440,6 +467,9 @@ const ProjectModal = ({
                                                 {agreementUploading ? <><Loader size={12} style={{ animation: 'spin 1s linear infinite' }} /> 업로드 중...</> : <><Plus size={13} /> 사진 업로드</>}
                                             </button>
                                         </div>
+                                        <p style={{ margin: '0.5rem 0 0', fontSize: '0.7rem', color: '#0ea5e9', opacity: 0.75, textAlign: 'center' }}>
+                                            💡 이 영역을 클릭한 뒤 <b>Ctrl+V</b>로 스크린샷을 바로 붙여넣을 수 있습니다
+                                        </p>
                                         {agreementError && <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.4rem' }}>{agreementError}</p>}
                                     </div>
 
