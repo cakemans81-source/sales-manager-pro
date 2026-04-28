@@ -1098,7 +1098,27 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
     try {
       setNotification({ type: 'info', message: `${exportData.length}건 엑셀 리포트 생성 중...` });
 
-      const targetData = exportData;
+      // 병합 프로젝트는 엑셀에서 [부모 요약 행 + 각 서브 프로젝트 행] 으로 펼쳐서 정보 손실 방지
+      const targetData = exportData.flatMap(item => {
+        if (item.isMerged && Array.isArray(item.mergedProjects) && item.mergedProjects.length > 0) {
+          const parentRow = { ...item, _rowKind: 'merged-parent', _mergedCount: item.mergedProjects.length };
+          const subRows = item.mergedProjects.map((sub, idx) => ({
+            ...sub,
+            company: sub.company || item.company,
+            customer: sub.customer || item.customer,
+            customerContact: sub.customerContact || item.customerContact,
+            customerPosition: sub.customerPosition || item.customerPosition,
+            customerPhone: sub.customerPhone || item.customerPhone,
+            representative: sub.representative || item.representative,
+            _rowKind: 'merged-sub',
+            _subIndex: idx + 1,
+            _subTotal: item.mergedProjects.length,
+          }));
+          return [parentRow, ...subRows];
+        }
+        return [{ ...item, _rowKind: 'normal' }];
+      });
+
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('Selected_Projects');
 
@@ -1173,7 +1193,18 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
 
 
         // 교대 배경색: 흰색(짝수) / 아주 연한 회색(홀수) → 가독성 우선
-        const rowBg = i % 2 === 0 ? 'FFFFFFFF' : 'FFF5F7FA';
+        // 병합 부모행은 보라색 강조, 서브행은 아주 연한 라벤더로 시각적 그룹핑
+        const isMergedParent = item._rowKind === 'merged-parent';
+        const isMergedSub = item._rowKind === 'merged-sub';
+        const rowBg = isMergedParent ? 'FFE0E7FF' : isMergedSub ? 'FFF5F3FF' : (i % 2 === 0 ? 'FFFFFFFF' : 'FFF5F7FA');
+
+        // 프로젝트명: 부모행은 [병합 N건] 접두어, 서브행은 └ 들여쓰기로 계층 표시
+        let projectName = safeVal(item.project);
+        if (isMergedParent) {
+          projectName = `📦 [병합 ${item._mergedCount}건] ${projectName}`;
+        } else if (isMergedSub) {
+          projectName = `    └ (${item._subIndex}/${item._subTotal}) ${projectName}`;
+        }
 
         const row = worksheet.addRow({
           company: safeVal(item.company || '(주)이루'),
@@ -1187,7 +1218,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
           clientName: safeVal(item.customerContact),
           clientTitle: safeVal(item.customerPosition),
           clientPhone: safeVal(item.customerPhone),
-          project: safeVal(item.project),
+          project: projectName,
           status: safeVal(item.status),
           amount: item.discountAmount && Number(item.discountAmount) > 0 ? Number(item.discountAmount) : (Number(item.estimateAmount) || 0),
           quotePdf: item.quotePdfUrl ? item.quotePdfUrl : '',
@@ -1243,6 +1274,15 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
 
         // 상태 셀: 가운데 정렬
         row.getCell('status').alignment = { vertical: 'middle', horizontal: 'center' };
+
+        // 병합 부모행은 프로젝트명·금액을 굵은 보라색으로 강조
+        if (isMergedParent) {
+          row.getCell('project').font = { bold: true, color: { argb: 'FF4338CA' }, size: 9 };
+          amountCell.font = { bold: true, color: { argb: 'FF4338CA' }, size: 9 };
+        } else if (isMergedSub) {
+          // 서브행은 약간 흐린 색으로 부모 종속성 표현
+          row.getCell('project').font = { color: { argb: 'FF4B5563' }, size: 9 };
+        }
 
         // 견적서 PDF 하이퍼링크
         if (item.quotePdfUrl) {
