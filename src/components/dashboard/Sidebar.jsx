@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, ClipboardList, ShieldCheck, Settings, LogOut, X, ChevronDown, ChevronRight, Briefcase, TrendingUp, CreditCard, Users, Kanban, FileText, ArrowLeftRight } from 'lucide-react';
+import { isPendingUser } from '../../utils/userStatus';
 
 const Sidebar = ({ user, onLogout, activeTab, setActiveTab, users, roleNames, isSidebarOpen, setIsSidebarOpen, companyMode }) => {
     const navigate = useNavigate();
@@ -34,6 +35,7 @@ const Sidebar = ({ user, onLogout, activeTab, setActiveTab, users, roleNames, is
     const accent = isGachi ? '#f59e0b' : '#818cf8';
     const accentBg = isGachi ? 'rgba(245,158,11,0.12)' : 'rgba(129,140,248,0.12)';
     const companyName = isGachi ? '(주)가치' : '(주)이루';
+    const pendingUserCount = users.filter(isPendingUser).length;
     const otherCompany = isGachi ? '(주)이루' : '(주)가치';
 
     return (
@@ -212,7 +214,7 @@ const Sidebar = ({ user, onLogout, activeTab, setActiveTab, users, roleNames, is
                 {user.role === 'admin' && (
                     <button className={`nav-item mobile-hide ${activeTab === 'admin' ? 'active' : ''}`} onClick={() => { setActiveTab('admin'); setIsSidebarOpen(false); }}>
                         <ShieldCheck size={18} /> 사용 인원 관리
-                        {users.filter(u => !u.isApproved).length > 0 && <span className="admin-badge">{users.filter(u => !u.isApproved).length}</span>}
+                        {pendingUserCount > 0 && <span className="admin-badge">{pendingUserCount}</span>}
                     </button>
                 )}
                 <button className={`nav-item mobile-hide ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => { setActiveTab('settings'); setIsSidebarOpen(false); }}>

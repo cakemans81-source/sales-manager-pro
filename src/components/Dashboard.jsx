@@ -44,7 +44,7 @@ const initialSalesData = [
   { id: 3, customer: '현대자동차', representative: '이영희', customerContact: '박성함', customerPosition: '팀장', customerPhone: '010-3456-7890', project: '자율주행 UI 디자인', status: '완료 마감 대기', estimateAmount: 42000000, discountAmount: 2000000, date: '2025.3.05' },
 ];
 
-const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChangeUserRole, onUpdateUser, companyMode = 'iru' }) => {
+const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChangeUserRole, onDeactivateUser, onUpdateUser, companyMode = 'iru' }) => {
   // 회사 필터 헬퍼
   const isGachi = companyMode === 'gachi';
   const companyFilter = (item) => {
@@ -1916,8 +1916,10 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
 
         {activeTab === 'admin' && (
           <AdminTab
-            users={users} onApproveUser={onApproveUser} onRejectUser={onRejectUser}
-            onChangeUserRole={onChangeUserRole} onUpdateUser={onUpdateUser}
+            users={users} currentUser={user}
+            onApproveUser={onApproveUser} onRejectUser={onRejectUser}
+            onChangeUserRole={onChangeUserRole} onDeactivateUser={onDeactivateUser}
+            onUpdateUser={onUpdateUser}
             setNotification={setNotification} roleNames={roleNames}
           />
         )}

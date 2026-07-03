@@ -4,8 +4,15 @@ import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import './App.css';
 import { supabase } from './lib/supabase';
+import { isActiveUser } from './utils/userStatus';
 
-const DEFAULT_ADMIN = { id: 'admin', password: '@skw208025', name: '대표님', role: 'admin', isApproved: true };
+const DEFAULT_ADMIN = { id: 'admin', password: '@skw208025', name: '대표님', role: 'admin', status: 'active', isApproved: true };
+
+const normalizeUser = (account) => (
+    account?.id === 'admin' && !account.status
+        ? { ...account, status: 'active' }
+        : account
+);
 
 function App() {
     const [user, setUser] = useState(() => {
@@ -19,7 +26,7 @@ function App() {
     const [users, setUsers] = useState(() => {
         try {
             const saved = localStorage.getItem('smp_users_cache');
-            return saved ? JSON.parse(saved) : [DEFAULT_ADMIN];
+            return saved ? JSON.parse(saved).map(normalizeUser) : [DEFAULT_ADMIN];
         } catch {
             return [DEFAULT_ADMIN];
         }
@@ -40,7 +47,7 @@ function App() {
                 const mapped = data.map(u => ({
                     ...u,
                     id: u.employeeId
-                }));
+                })).map(normalizeUser);
                 // 어드민은 항상 포함 (보안책)
                 if (!mapped.find(u => u.id === 'admin')) {
                     mapped.push(DEFAULT_ADMIN);
@@ -96,7 +103,7 @@ function App() {
         if (supabase) {
             await supabase.from('user_accounts').update({ isApproved: true, role: role, status: 'active' }).eq('employeeId', userId);
         }
-        setUsers(users.map(u => u.id === userId ? { ...u, isApproved: true, role: role || u.role } : u));
+        setUsers(users.map(u => u.id === userId ? { ...u, isApproved: true, role: role || u.role, status: 'active' } : u));
     };
 
     const handleRejectUser = async (userId) => {
@@ -111,6 +118,42 @@ function App() {
             await supabase.from('user_accounts').update({ role: newRole }).eq('employeeId', userId);
         }
         setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
+    };
+
+    const handleDeactivateUser = async (userId) => {
+        const targetUser = users.find(u => u.id === userId);
+        if (!targetUser) return { success: false, message: '사용자를 찾을 수 없습니다.' };
+        if (userId === user?.id) return { success: false, message: '현재 로그인한 본인 계정은 삭제할 수 없습니다.' };
+
+        const activeAdminCount = users.filter(u => (
+            u.role === 'admin' &&
+            u.isApproved === true &&
+            isActiveUser(u)
+        )).length;
+
+        if (
+            targetUser.role === 'admin' &&
+            targetUser.isApproved === true &&
+            isActiveUser(targetUser) &&
+            activeAdminCount <= 1
+        ) {
+            return { success: false, message: '마지막 관리자는 삭제할 수 없습니다.' };
+        }
+
+        if (supabase) {
+            const { error } = await supabase
+                .from('user_accounts')
+                .update({ status: 'inactive', isApproved: false })
+                .eq('employeeId', userId);
+            if (error) throw error;
+        }
+
+        setUsers(users.map(u => (
+            u.id === userId
+                ? { ...u, status: 'inactive', isApproved: false }
+                : u
+        )));
+        return { success: true, message: '사용자가 삭제 처리되었습니다. 기존 프로젝트 기록은 유지됩니다.' };
     };
 
     const handleUpdateUser = async (userId, updatedData) => {
@@ -142,6 +185,7 @@ function App() {
                             onApproveUser: handleApproveUser,
                             onRejectUser: handleRejectUser,
                             onChangeUserRole: handleChangeUserRole,
+                            onDeactivateUser: handleDeactivateUser,
                             onUpdateUser: handleUpdateUser,
                         };
                         return (

@@ -1,17 +1,48 @@
 import React, { useState } from 'react';
 import { Eye, Edit3, UserX, Settings, X, ShieldCheck } from 'lucide-react';
+import { isActiveUser, isPendingUser } from '../../utils/userStatus';
 
 const AdminTab = ({
     users,
+    currentUser,
     onApproveUser,
     onRejectUser,
     onChangeUserRole,
+    onDeactivateUser,
     onUpdateUser,
     setNotification,
     roleNames
 }) => {
     const [editingUser, setEditingUser] = useState(null);
     const [passwordForm, setPasswordForm] = useState({ new: '' });
+    const pendingUsers = users.filter(isPendingUser);
+    const activeUsers = users.filter(u => u.isApproved === true && isActiveUser(u));
+    const activeAdminCount = activeUsers.filter(u => u.role === 'admin').length;
+
+    const handleDeactivateClick = async (targetUser) => {
+        if (targetUser.id === currentUser?.id) {
+            setNotification({ type: 'error', message: '현재 로그인한 본인 계정은 삭제할 수 없습니다.' });
+            return;
+        }
+
+        if (targetUser.role === 'admin' && activeAdminCount <= 1) {
+            setNotification({ type: 'error', message: '마지막 관리자는 삭제할 수 없습니다.' });
+            return;
+        }
+
+        if (!window.confirm('이 사용자를 삭제하면 로그인 및 작성이 차단됩니다. 기존 프로젝트 기록은 유지됩니다.')) return;
+
+        try {
+            const result = await onDeactivateUser(targetUser.id);
+            if (result?.success === false) {
+                setNotification({ type: 'error', message: result.message });
+                return;
+            }
+            setNotification({ type: 'success', message: result?.message || '사용자가 삭제 처리되었습니다.' });
+        } catch (err) {
+            setNotification({ type: 'error', message: '삭제 처리 실패: ' + err.message });
+        }
+    };
 
     return (
         <div className="animate-fade">
@@ -24,7 +55,7 @@ const AdminTab = ({
 
             <section className="admin-section glass-card">
                 <div className="section-header">
-                    <h3>신규 사용자 승인 대기 ({users.filter(u => !u.isApproved).length})</h3>
+                    <h3>신규 사용자 승인 대기 ({pendingUsers.length})</h3>
                 </div>
                 <div className="table-wrapper">
                     <table>
@@ -32,7 +63,7 @@ const AdminTab = ({
                             <tr><th>이름</th><th>아이디</th><th>상태</th><th>액션 (권한 설정)</th></tr>
                         </thead>
                         <tbody>
-                            {users.filter(u => !u.isApproved).map(u => (
+                            {pendingUsers.map(u => (
                                 <tr key={u.id}>
                                     <td style={{ fontWeight: '600' }}>{u.name}</td>
                                     <td>{u.id}</td>
@@ -46,7 +77,7 @@ const AdminTab = ({
                                     </td>
                                 </tr>
                             ))}
-                            {users.filter(u => !u.isApproved).length === 0 && (
+                            {pendingUsers.length === 0 && (
                                 <tr><td colSpan="4" style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>현재 승인 대기 중인 사용자가 없습니다.</td></tr>
                             )}
                         </tbody>
@@ -64,7 +95,7 @@ const AdminTab = ({
                             <tr><th>이름</th><th>아이디</th><th>권한 구분</th><th>상태</th><th>액션</th></tr>
                         </thead>
                         <tbody>
-                            {users.filter(u => u.isApproved).map(u => (
+                            {activeUsers.map(u => (
                                 <tr key={u.id}>
                                     <td style={{ fontWeight: '600' }}>{u.name}</td>
                                     <td>{u.id}</td>
@@ -86,10 +117,16 @@ const AdminTab = ({
                                                     <option value="editor">{roleNames.editor}</option>
                                                 </select>
                                             )}
+                                            <button className="btn-icon reject" onClick={() => handleDeactivateClick(u)} title="삭제">
+                                                <UserX size={14} /> 삭제
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
                             ))}
+                            {activeUsers.length === 0 && (
+                                <tr><td colSpan="5" style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>등록된 활성 사용자가 없습니다.</td></tr>
+                            )}
                         </tbody>
                     </table>
                 </div>

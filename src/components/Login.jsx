@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { LogIn, ShieldCheck, User, Lock, UserPlus, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { isActiveUser } from '../utils/userStatus';
 
 const Login = ({ onLogin, onSignup, users }) => {
   const [isSignupMode, setIsSignupMode] = useState(false);
@@ -19,10 +20,10 @@ const Login = ({ onLogin, onSignup, users }) => {
       const foundUser = users.find(u => u.id === userId && u.password === password);
 
       if (foundUser) {
-        if (foundUser.isApproved) {
+        if (foundUser.isApproved === true && isActiveUser(foundUser)) {
           onLogin(foundUser);
         } else {
-          setError('아직 승인되지 않은 계정입니다. 관리자의 승인을 기다려주세요.');
+          setError('승인되지 않았거나 비활성화된 계정입니다.');
         }
       } else {
         setError('아이디 또는 비밀번호가 일치하지 않습니다.');
