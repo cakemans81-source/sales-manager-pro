@@ -1,5 +1,7 @@
 import React, { useRef, useState } from 'react';
-import { X, Upload, Type, Image, Check, ChevronLeft, Download, Sparkles } from 'lucide-react';
+import { X, Upload, Type, Image, Check, ChevronLeft, Download, Sparkles, Trash2, Save, RotateCcw, FileImage } from 'lucide-react';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 import useCompanyIntroStore from '../../store/companyIntroStore';
 
 // ────────────────────────────────────────────────────────────
@@ -322,6 +324,324 @@ const TemplateEditor = ({ templateId }) => {
   );
 };
 
+const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(reader.result);
+  reader.onerror = reject;
+  reader.readAsDataURL(file);
+});
+
+const clampPercent = (value, min = 0, max = 100) => Math.max(min, Math.min(max, Number(value) || 0));
+
+const ExternalDeckEditor = () => {
+  const {
+    slides,
+    selectedSlideId,
+    selectedElementId,
+    selectSlide,
+    deleteSlide,
+    addElement,
+    updateElement,
+    deleteElement,
+    selectElement,
+    saveDeckToLocalStorage,
+    resetDeck,
+    savedAt,
+  } = useCompanyIntroStore();
+  const [isExporting, setIsExporting] = useState(false);
+  const [dragState, setDragState] = useState(null);
+  const overlayImageRef = useRef(null);
+  const canvasRef = useRef(null);
+  const exportRefs = useRef({});
+
+  const selectedSlide = slides.find(slide => slide.id === selectedSlideId) || slides[0] || null;
+  const selectedElement = selectedSlide?.elements?.find(element => element.id === selectedElementId) || null;
+
+  const addTextElement = () => {
+    if (!selectedSlide) return;
+    addElement(selectedSlide.id, {
+      id: `text_${Date.now()}`,
+      type: 'text',
+      text: '수정할 문구',
+      x: 12,
+      y: 14,
+      width: 34,
+      height: 12,
+      fontSize: 30,
+      fontWeight: 700,
+      color: '#111827',
+      align: 'left',
+    });
+  };
+
+  const handleOverlayImageUpload = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !selectedSlide) return;
+    if (!file.type.startsWith('image/')) {
+      alert('PNG/JPG/WebP 이미지 파일만 추가할 수 있습니다.');
+      return;
+    }
+
+    const src = await readFileAsDataUrl(file);
+    addElement(selectedSlide.id, {
+      id: `image_${Date.now()}`,
+      type: 'image',
+      src,
+      x: 58,
+      y: 16,
+      width: 28,
+      height: 28,
+    });
+  };
+
+  const updateSelectedElement = (patch) => {
+    if (!selectedSlide || !selectedElement) return;
+    updateElement(selectedSlide.id, selectedElement.id, patch);
+  };
+
+  const handlePointerDown = (event, element) => {
+    if (!selectedSlide || !canvasRef.current) return;
+    event.stopPropagation();
+    selectElement(element.id);
+    setDragState({
+      id: element.id,
+      startX: event.clientX,
+      startY: event.clientY,
+      initialX: element.x,
+      initialY: element.y,
+    });
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  };
+
+  const handlePointerMove = (event) => {
+    if (!dragState || !selectedSlide || !canvasRef.current) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const dx = ((event.clientX - dragState.startX) / rect.width) * 100;
+    const dy = ((event.clientY - dragState.startY) / rect.height) * 100;
+    const element = selectedSlide.elements.find(item => item.id === dragState.id);
+    const maxX = 100 - (element?.width || 10);
+    const maxY = 100 - (element?.height || 10);
+    updateElement(selectedSlide.id, dragState.id, {
+      x: clampPercent(dragState.initialX + dx, 0, maxX),
+      y: clampPercent(dragState.initialY + dy, 0, maxY),
+    });
+  };
+
+  const renderSlideCanvas = (slide, { exportMode = false } = {}) => (
+    <div
+      ref={exportMode ? (node) => { exportRefs.current[slide.id] = node; } : canvasRef}
+      onPointerMove={!exportMode ? handlePointerMove : undefined}
+      onPointerUp={!exportMode ? () => setDragState(null) : undefined}
+      onPointerCancel={!exportMode ? () => setDragState(null) : undefined}
+      onClick={!exportMode ? () => selectElement(null) : undefined}
+      style={{
+        width: exportMode ? '1280px' : '100%',
+        aspectRatio: '16 / 9',
+        position: 'relative',
+        background: '#fff',
+        overflow: 'hidden',
+        borderRadius: exportMode ? 0 : '10px',
+        boxShadow: exportMode ? 'none' : '0 8px 40px rgba(99,102,241,0.14)',
+      }}
+    >
+      <img
+        src={slide.backgroundImage}
+        alt={slide.title}
+        draggable={false}
+        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', background: '#fff' }}
+      />
+      {(slide.elements || []).map(element => {
+        const isSelected = !exportMode && selectedElementId === element.id;
+        return (
+          <div
+            key={element.id}
+            onPointerDown={!exportMode ? (event) => handlePointerDown(event, element) : undefined}
+            onClick={!exportMode ? (event) => { event.stopPropagation(); selectElement(element.id); } : undefined}
+            style={{
+              position: 'absolute',
+              left: `${element.x}%`,
+              top: `${element.y}%`,
+              width: `${element.width}%`,
+              height: `${element.height}%`,
+              cursor: exportMode ? 'default' : 'move',
+              border: exportMode ? 'none' : `2px ${isSelected ? 'solid #6366f1' : 'dashed rgba(99,102,241,0.35)'}`,
+              background: element.type === 'text' ? 'rgba(255,255,255,0.72)' : 'transparent',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: element.align === 'center' ? 'center' : element.align === 'right' ? 'flex-end' : 'flex-start',
+              overflow: 'hidden',
+              padding: element.type === 'text' ? '0.35rem' : 0,
+              boxSizing: 'border-box',
+            }}
+          >
+            {element.type === 'image' ? (
+              <img src={element.src} alt="overlay" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            ) : (
+              <span style={{
+                width: '100%',
+                color: element.color,
+                fontSize: `${element.fontSize}px`,
+                fontWeight: element.fontWeight,
+                textAlign: element.align,
+                lineHeight: 1.18,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+              }}>
+                {element.text}
+              </span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  const handleSaveDeck = () => {
+    const result = saveDeckToLocalStorage();
+    alert(result.success ? '회사소개서를 저장했습니다.' : result.message);
+  };
+
+  const handleResetDeck = () => {
+    if (!window.confirm('저장된 외부 디자인 deck을 초기화하시겠습니까?')) return;
+    resetDeck();
+  };
+
+  const handlePdfDownload = async () => {
+    if (slides.length === 0) {
+      alert('PDF로 출력할 슬라이드가 없습니다.');
+      return;
+    }
+
+    try {
+      setIsExporting(true);
+      const pdf = new jsPDF('l', 'mm', [297, 167.0625]);
+      for (let index = 0; index < slides.length; index += 1) {
+        const node = exportRefs.current[slides[index].id];
+        if (!node) continue;
+        const canvas = await html2canvas(node, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+        const image = canvas.toDataURL('image/jpeg', 0.96);
+        if (index > 0) pdf.addPage([297, 167.0625], 'l');
+        pdf.addImage(image, 'JPEG', 0, 0, 297, 167.0625);
+      }
+      pdf.save(`Company_Deck_${new Date().toISOString().slice(0, 10)}.pdf`);
+    } catch (error) {
+      console.error('Company deck PDF export failed:', error);
+      alert('PDF 다운로드 중 오류가 발생했습니다.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  if (!selectedSlide) {
+    return (
+      <div style={{ padding: '2.5rem', textAlign: 'center', border: '1px dashed #d1d5db', borderRadius: '12px', background: '#fff' }}>
+        <FileImage size={34} color="#6366f1" />
+        <p style={{ margin: '0.8rem 0 0.2rem', fontSize: '0.95rem', fontWeight: '800', color: '#1f2937' }}>슬라이드 이미지를 업로드해 주세요</p>
+        <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>PNG, JPG, WebP 파일을 가져오면 각 이미지가 한 장의 슬라이드가 됩니다.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '150px minmax(0, 1fr) 270px', gap: '1rem', alignItems: 'start' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
+        {slides.map((slide, index) => (
+          <button
+            key={slide.id}
+            onClick={() => selectSlide(slide.id)}
+            style={{
+              border: selectedSlide.id === slide.id ? '2px solid #6366f1' : '1px solid #e5e7eb',
+              background: '#fff',
+              borderRadius: '8px',
+              padding: '0.35rem',
+              cursor: 'pointer',
+              textAlign: 'left',
+            }}
+          >
+            <div style={{ aspectRatio: '16 / 9', background: '#f9fafb', overflow: 'hidden', borderRadius: '5px' }}>
+              <img src={slide.backgroundImage} alt={slide.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            </div>
+            <div style={{ marginTop: '0.35rem', fontSize: '0.68rem', fontWeight: '800', color: '#374151' }}>{index + 1}. {slide.title}</div>
+          </button>
+        ))}
+      </div>
+
+      <div>
+        {renderSlideCanvas(selectedSlide)}
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.8rem' }}>
+          <button className="btn btn-ghost" onClick={addTextElement}><Type size={16} /> 텍스트 추가</button>
+          <button className="btn btn-ghost" onClick={() => overlayImageRef.current?.click()}><Image size={16} /> 이미지 추가</button>
+          <button className="btn btn-ghost" onClick={handleSaveDeck}><Save size={16} /> 회사소개서 저장</button>
+          <button className="btn btn-ghost" onClick={handlePdfDownload} disabled={isExporting}><Download size={16} /> {isExporting ? 'PDF 생성 중...' : 'PDF 다운로드'}</button>
+          <button className="btn btn-ghost" onClick={() => deleteSlide(selectedSlide.id)}><Trash2 size={16} /> 슬라이드 삭제</button>
+          <button className="btn btn-ghost" onClick={handleResetDeck}><RotateCcw size={16} /> 초기화</button>
+          <input ref={overlayImageRef} type="file" accept="image/png,image/jpeg,image/webp" style={{ display: 'none' }} onChange={handleOverlayImageUpload} />
+        </div>
+        <p style={{ fontSize: '0.7rem', color: '#6b7280', marginTop: '0.6rem' }}>
+          이미지는 브라우저 저장공간을 사용하므로 너무 큰 파일은 저장되지 않을 수 있습니다.
+          {savedAt && ` 마지막 저장: ${new Date(savedAt).toLocaleString('ko-KR')}`}
+        </p>
+      </div>
+
+      <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '1rem' }}>
+        <h3 style={{ margin: '0 0 0.8rem', fontSize: '0.9rem', color: '#111827' }}>선택 요소 편집</h3>
+        {!selectedElement ? (
+          <p style={{ fontSize: '0.74rem', color: '#6b7280', lineHeight: 1.6, margin: 0 }}>슬라이드 위 텍스트나 이미지를 클릭하면 위치와 크기를 조정할 수 있습니다. 요소는 드래그로 이동할 수 있습니다.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+            {selectedElement.type === 'text' && (
+              <>
+                <label style={{ fontSize: '0.7rem', fontWeight: '800', color: '#4b5563' }}>문구</label>
+                <textarea className="input-field" value={selectedElement.text} rows={4} onChange={e => updateSelectedElement({ text: e.target.value })} />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                  <input className="input-field" type="number" value={selectedElement.fontSize} onChange={e => updateSelectedElement({ fontSize: Number(e.target.value) })} title="글자 크기" />
+                  <select className="input-field" value={selectedElement.fontWeight} onChange={e => updateSelectedElement({ fontWeight: Number(e.target.value) })}>
+                    <option value={400}>보통</option>
+                    <option value={700}>굵게</option>
+                    <option value={900}>매우 굵게</option>
+                  </select>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                  <input className="input-field" type="color" value={selectedElement.color} onChange={e => updateSelectedElement({ color: e.target.value })} />
+                  <select className="input-field" value={selectedElement.align} onChange={e => updateSelectedElement({ align: e.target.value })}>
+                    <option value="left">왼쪽</option>
+                    <option value="center">가운데</option>
+                    <option value="right">오른쪽</option>
+                  </select>
+                </div>
+              </>
+            )}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+              {['x', 'y', 'width', 'height'].map(key => (
+                <label key={key} style={{ fontSize: '0.68rem', fontWeight: '800', color: '#4b5563' }}>
+                  {key.toUpperCase()}
+                  <input
+                    className="input-field"
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={Math.round(selectedElement[key] * 10) / 10}
+                    onChange={e => updateSelectedElement({ [key]: clampPercent(e.target.value) })}
+                    style={{ marginTop: '0.25rem' }}
+                  />
+                </label>
+              ))}
+            </div>
+            <button className="btn btn-ghost" onClick={() => deleteElement(selectedSlide.id, selectedElement.id)} style={{ color: '#ef4444' }}>
+              <Trash2 size={16} /> 요소 삭제
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div style={{ position: 'fixed', left: '-10000px', top: 0, width: '1280px', pointerEvents: 'none' }}>
+        {slides.map(slide => <div key={slide.id} style={{ width: '1280px', height: '720px', marginBottom: '20px' }}>{renderSlideCanvas(slide, { exportMode: true })}</div>)}
+      </div>
+    </div>
+  );
+};
+
 // ────────────────────────────────────────────────────────────
 // 템플릿 선택 카드
 // ────────────────────────────────────────────────────────────
@@ -396,8 +716,31 @@ const TemplateCard = ({ tpl }) => {
 // 메인 컴포넌트
 // ────────────────────────────────────────────────────────────
 const CompanyIntroPage = () => {
-  const { selectedTemplate, changeTemplate, fieldValues } = useCompanyIntroStore();
-  const pdfRef = useRef();
+  const { selectedTemplate, changeTemplate, fieldValues, addSlides, slides } = useCompanyIntroStore();
+  const slideUploadRef = useRef();
+  const [activeWorkspace, setActiveWorkspace] = useState('external');
+
+  const handleSlideImageUpload = async (event) => {
+    const files = Array.from(event.target.files || []).filter(file => file.type.startsWith('image/'));
+    event.target.value = '';
+    if (files.length === 0) {
+      alert('PNG/JPG/WebP 이미지 파일을 선택해 주세요.');
+      return;
+    }
+
+    try {
+      const importedSlides = await Promise.all(files.map(async (file, index) => ({
+        id: `slide_${Date.now()}_${index}_${Math.random().toString(36).slice(2, 7)}`,
+        title: file.name.replace(/\.[^.]+$/, '') || `Slide ${slides.length + index + 1}`,
+        backgroundImage: await readFileAsDataUrl(file),
+        elements: [],
+      })));
+      addSlides(importedSlides);
+      setActiveWorkspace('external');
+    } catch {
+      alert('이미지를 불러오는 중 오류가 발생했습니다.');
+    }
+  };
 
   return (
     <div style={{
@@ -447,13 +790,13 @@ const CompanyIntroPage = () => {
             </div>
           ))}
 
-          {/* 기존 소개서 PDF 업로드 */}
+          {/* 외부 디자인 이미지 업로드 */}
           <div style={{ marginTop: '1.4rem', marginBottom: '1.4rem' }}>
             <div style={{ fontSize: '0.68rem', fontWeight: '800', color: '#6366f1', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '0.8rem' }}>
-              기존 소개서 (PDF)
+              외부 디자인 가져오기
             </div>
             <div
-              onClick={() => pdfRef.current?.click()}
+              onClick={() => slideUploadRef.current?.click()}
               style={{
                 width: '100%', aspectRatio: '297/210',
                 background: 'linear-gradient(135deg, #f8f8ff, #f0f1ff)',
@@ -465,10 +808,13 @@ const CompanyIntroPage = () => {
               onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(135deg, #f8f8ff, #f0f1ff)'; e.currentTarget.style.borderColor = 'rgba(99,102,241,0.3)'; }}
             >
               <Upload size={22} color="#6366f1" />
-              <span style={{ fontSize: '0.78rem', color: '#6366f1', fontWeight: '700' }}>기존 소개서 PDF 업로드</span>
-              <span style={{ fontSize: '0.64rem', color: '#9ca3af' }}>클릭하여 파일 선택</span>
+              <span style={{ fontSize: '0.78rem', color: '#6366f1', fontWeight: '700' }}>슬라이드 이미지 업로드</span>
+              <span style={{ fontSize: '0.64rem', color: '#9ca3af' }}>PNG/JPG/WebP 여러 장 선택 가능</span>
             </div>
-            <input ref={pdfRef} type="file" accept=".pdf" style={{ display: 'none' }} />
+            <input ref={slideUploadRef} type="file" accept="image/png,image/jpeg,image/webp" multiple style={{ display: 'none' }} onChange={handleSlideImageUpload} />
+            <div style={{ marginTop: '0.55rem', fontSize: '0.66rem', color: '#9ca3af', lineHeight: 1.5 }}>
+              PDF/PPTX 객체 복원은 후속 지원 예정입니다. 1차에서는 Claude Design 등에서 내보낸 슬라이드 이미지를 배경으로 사용합니다.
+            </div>
           </div>
 
           {/* 강조 키워드 */}
@@ -495,8 +841,8 @@ const CompanyIntroPage = () => {
           borderBottom: '1px solid #e8e8e8',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            {selectedTemplate && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            {activeWorkspace === 'template' && selectedTemplate && (
               <button
                 onClick={() => changeTemplate(null)}
                 style={{
@@ -509,15 +855,49 @@ const CompanyIntroPage = () => {
               </button>
             )}
             <span style={{ fontSize: '0.92rem', fontWeight: '800', color: '#1a1c1c' }}>
-              {selectedTemplate
+              {activeWorkspace === 'external'
+                ? '🖼️ 외부 디자인 편집'
+                : selectedTemplate
                 ? `✏️ ${TEMPLATES.find(t => t.id === selectedTemplate)?.name} 편집 중`
                 : '✨ 템플릿 선택'}
             </span>
-            {!selectedTemplate && (
+            {activeWorkspace === 'template' && !selectedTemplate && (
               <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>A4 가로 규격 (297 : 210)</span>
             )}
+            <div style={{ display: 'flex', gap: '0.35rem' }}>
+              <button
+                onClick={() => setActiveWorkspace('external')}
+                style={{
+                  border: activeWorkspace === 'external' ? '1px solid #6366f1' : '1px solid #e5e7eb',
+                  background: activeWorkspace === 'external' ? 'rgba(99,102,241,0.08)' : '#fff',
+                  color: activeWorkspace === 'external' ? '#6366f1' : '#6b7280',
+                  borderRadius: '8px',
+                  padding: '0.35rem 0.65rem',
+                  fontSize: '0.72rem',
+                  fontWeight: '800',
+                  cursor: 'pointer',
+                }}
+              >
+                외부 디자인
+              </button>
+              <button
+                onClick={() => setActiveWorkspace('template')}
+                style={{
+                  border: activeWorkspace === 'template' ? '1px solid #6366f1' : '1px solid #e5e7eb',
+                  background: activeWorkspace === 'template' ? 'rgba(99,102,241,0.08)' : '#fff',
+                  color: activeWorkspace === 'template' ? '#6366f1' : '#6b7280',
+                  borderRadius: '8px',
+                  padding: '0.35rem 0.65rem',
+                  fontSize: '0.72rem',
+                  fontWeight: '800',
+                  cursor: 'pointer',
+                }}
+              >
+                Stitch 템플릿
+              </button>
+            </div>
           </div>
-          {selectedTemplate && (
+          {activeWorkspace === 'template' && selectedTemplate && (
             <button style={{
               display: 'flex', alignItems: 'center', gap: '0.4rem',
               padding: '0.5rem 1.1rem', borderRadius: '9px', border: 'none',
@@ -536,7 +916,9 @@ const CompanyIntroPage = () => {
 
         {/* 패널 콘텐츠 */}
         <div style={{ flex: 1, overflow: 'auto', padding: '1.4rem 1.6rem' }}>
-          {!selectedTemplate ? (
+          {activeWorkspace === 'external' ? (
+            <ExternalDeckEditor />
+          ) : !selectedTemplate ? (
             /* ── 템플릿 선택 그리드 ── */
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <p style={{ fontSize: '0.74rem', color: '#767586', margin: '0 0 0.2rem' }}>
