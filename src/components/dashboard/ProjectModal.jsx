@@ -202,11 +202,10 @@ const ProjectModal = ({
         setFormData(prev => ({ ...prev, agreementImages: (prev.agreementImages || []).filter(u => u !== url) }));
     };
 
-    // ── 세금계산서 이미지 ──
+    // ── 세금계산서 ──
     const taxInvoiceUploadingRef = useRef(false);
-    const handleTaxInvoiceImagesUpload = async (e) => {
+    const uploadTaxInvoiceFiles = async (files) => {
         if (taxInvoiceUploadingRef.current) return;
-        const files = Array.from(e.target.files);
         if (!files.length) return;
         const invalid = files.find(f => !f.type.startsWith('image/'));
         if (invalid) { setTaxInvoiceError('이미지 파일만 업로드할 수 있습니다.'); return; }
@@ -229,6 +228,24 @@ const ProjectModal = ({
         } finally {
             setTaxInvoiceUploading(false);
             taxInvoiceUploadingRef.current = false;
+        }
+    };
+    const handleTaxInvoiceImagesUpload = (e) => uploadTaxInvoiceFiles(Array.from(e.target.files));
+
+    const handleTaxInvoicePaste = (e) => {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].kind === 'file' && items[i].type.startsWith('image/')) {
+                const file = items[i].getAsFile();
+                if (!file) return;
+                const rawExt = file.type.split('/')[1] || 'png';
+                const ext = rawExt.replace(/[^a-zA-Z0-9]/g, '') || 'png';
+                const renamed = new File([file], `tax-invoice-screenshot-${Date.now()}.${ext}`, { type: file.type });
+                e.preventDefault();
+                uploadTaxInvoiceFiles([renamed]);
+                return;
+            }
         }
     };
 
@@ -507,9 +524,15 @@ const ProjectModal = ({
                                         {agreementError && <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.4rem' }}>{agreementError}</p>}
                                     </div>
 
-                                    {/* 세금계산서 이미지 */}
-                                    <div style={{ background: 'rgba(52,211,153,0.05)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(52,211,153,0.15)' }}>
-                                        <h4 style={{ margin: '0 0 0.75rem 0', color: '#34d399', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Receipt size={14} /> 세금계산서 이미지</h4>
+                                    {/* 세금계산서 */}
+                                    <div
+                                        tabIndex={0}
+                                        onPaste={handleTaxInvoicePaste}
+                                        style={{ background: 'rgba(52,211,153,0.05)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(52,211,153,0.15)', outline: 'none' }}
+                                        onFocus={e => { e.currentTarget.style.border = '1px solid rgba(52,211,153,0.5)'; e.currentTarget.style.boxShadow = '0 0 0 2px rgba(52,211,153,0.15)'; }}
+                                        onBlur={e => { e.currentTarget.style.border = '1px solid rgba(52,211,153,0.15)'; e.currentTarget.style.boxShadow = 'none'; }}
+                                    >
+                                        <h4 style={{ margin: '0 0 0.75rem 0', color: '#34d399', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Receipt size={14} /> 세금계산서</h4>
                                         {renderImageGrid(formData.taxInvoiceImages, handleTaxInvoiceImageRemove, '#34d399', '세금계산서')}
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                                             <input ref={taxInvoiceInputRef} type="file" accept="image/png,image/jpeg,image/jpg" multiple style={{ display: 'none' }} onChange={handleTaxInvoiceImagesUpload} />
@@ -518,6 +541,9 @@ const ProjectModal = ({
                                                 {taxInvoiceUploading ? <><Loader size={12} style={{ animation: 'spin 1s linear infinite' }} /> 업로드 중...</> : <><Plus size={13} /> 사진 업로드</>}
                                             </button>
                                         </div>
+                                        <p style={{ margin: '0.5rem 0 0', fontSize: '0.7rem', color: '#34d399', opacity: 0.75, textAlign: 'center' }}>
+                                            💡 이 영역을 클릭한 뒤 <b>Ctrl+V</b>로 스크린샷을 바로 붙여넣을 수 있습니다
+                                        </p>
                                         {taxInvoiceError && <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.4rem' }}>{taxInvoiceError}</p>}
                                     </div>
 

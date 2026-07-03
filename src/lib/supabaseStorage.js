@@ -2,7 +2,7 @@
  * Supabase Storage - 파일 업로드 유틸리티
  * - quote-pdfs      버킷: 견적서 PDF/이미지
  * - mail-pdfs       버킷: 메일 내용 PDF
- * - project-images  버킷: 최종 제품 사진, 견적 합의서 이미지, 세금계산서 이미지 (다중)
+ * - project-images  버킷: 최종 제품 사진, 견적 합의서 이미지, 세금계산서 (다중)
  */
 import { supabase } from './supabase';
 
@@ -126,7 +126,7 @@ export const deleteAgreementImage = async (publicUrl) => {
 };
 
 // ─────────────────────────────────────────────
-// 세금계산서 이미지 업로드 / 삭제
+// 세금계산서 업로드 / 삭제
 // ─────────────────────────────────────────────
 export const uploadTaxInvoiceImage = async (file, projectId) => {
     if (!supabase) throw new Error('Supabase가 연결되어 있지 않습니다.');
