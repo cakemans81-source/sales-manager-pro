@@ -84,7 +84,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
   };
 
   const canEdit = user.role === 'admin' || user.role === 'editor';
-  const roleNames = { 'admin': '최고 지휘관', 'editor': '작전 실행요원', 'viewer': '정보 열람요원' };
+  const roleNames = { 'admin': '관리자', 'editor': '작성 가능', 'viewer': '열람 전용' };
 
   const [config, setConfig] = useState(() => {
     const saved = localStorage.getItem('smp_config');
@@ -1520,7 +1520,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
                             activeTab === 'closing' ? `${companyName} 완료 마감 대기 현황` :
                               activeTab === 'tax_invoice' ? `${companyName} 세금계산서 발행 완료` :
                                 activeTab === 'collection' ? `${companyName} 수금 완료 현황` :
-                                  activeTab === 'admin' ? '요원 관리 본부' : '시스템 설정'}</h2>
+                                  activeTab === 'admin' ? '사용 인원 관리' : '시스템 설정'}</h2>
               <p>{activeTab === 'dashboard' ? '오늘의 주요 작전 보고를 확인하세요.' : '데이터 기반의 정밀한 관리를 시작합니다.'}</p>
               {/* 버튼: 제목 아래 좌측 정렬 */}
               <div style={{ display: 'flex', gap: '0.6rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>

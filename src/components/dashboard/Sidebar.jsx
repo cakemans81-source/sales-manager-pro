@@ -211,7 +211,7 @@ const Sidebar = ({ user, onLogout, activeTab, setActiveTab, users, roleNames, is
                 </button>
                 {user.role === 'admin' && (
                     <button className={`nav-item mobile-hide ${activeTab === 'admin' ? 'active' : ''}`} onClick={() => { setActiveTab('admin'); setIsSidebarOpen(false); }}>
-                        <ShieldCheck size={18} /> 사용자 요원 관리
+                        <ShieldCheck size={18} /> 사용 인원 관리
                         {users.filter(u => !u.isApproved).length > 0 && <span className="admin-badge">{users.filter(u => !u.isApproved).length}</span>}
                     </button>
                 )}
