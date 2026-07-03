@@ -1,6 +1,6 @@
 /**
  * Supabase Storage - 파일 업로드 유틸리티
- * - quote-pdfs      버킷: 과거 견적서 PDF
+ * - quote-pdfs      버킷: 견적서 PDF/이미지
  * - mail-pdfs       버킷: 메일 내용 PDF
  * - project-images  버킷: 최종 제품 사진, 견적 합의서 이미지, 세금계산서 이미지 (다중)
  */
@@ -22,7 +22,7 @@ const extractFilePath = (publicUrl, bucket) => {
 };
 
 // ─────────────────────────────────────────────
-// 견적서 PDF 업로드 / 삭제
+// 견적서 파일 업로드 / 삭제
 // ─────────────────────────────────────────────
 export const uploadQuotePDF = async (file, projectId) => {
     if (!supabase) throw new Error('Supabase가 연결되어 있지 않습니다.');
@@ -34,7 +34,7 @@ export const uploadQuotePDF = async (file, projectId) => {
 
     const { error } = await supabase.storage
         .from(PDF_BUCKET)
-        .upload(filePath, file, { contentType: 'application/pdf', upsert: false });
+        .upload(filePath, file, { contentType: file.type || 'application/pdf', upsert: false });
 
     if (error) throw error;
     const { data } = supabase.storage.from(PDF_BUCKET).getPublicUrl(filePath);

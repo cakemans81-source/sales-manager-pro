@@ -25,6 +25,7 @@ const ProjectModal = ({
     const [pdfUploading, setPdfUploading] = useState(false);
     const [pdfError, setPdfError] = useState('');
     const pdfInputRef = useRef(null);
+    const pdfUploadingRef = useRef(false);
     const [showDeliveryNote, setShowDeliveryNote] = useState(false);
 
     const [mailUploading, setMailUploading] = useState(false);
@@ -43,12 +44,11 @@ const ProjectModal = ({
     const [taxInvoiceError, setTaxInvoiceError] = useState('');
     const taxInvoiceInputRef = useRef(null);
 
-    const handlePdfUpload = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        if (file.type !== 'application/pdf') { setPdfError('PDF 파일만 업로드할 수 있습니다.'); return; }
+    const uploadQuoteFile = async (file) => {
+        if (!file || pdfUploadingRef.current) return;
         if (file.size > 20 * 1024 * 1024) { setPdfError('파일 크기는 20MB 이하여야 합니다.'); return; }
         setPdfError(''); setPdfUploading(true);
+        pdfUploadingRef.current = true;
         try {
             const tempId = editingItemId || `new_${Date.now()}`;
             const url = await uploadQuotePDF(file, tempId);
@@ -57,7 +57,32 @@ const ProjectModal = ({
             setPdfError(`업로드 실패: ${err.message || '알 수 없는 오류'}`);
         } finally {
             setPdfUploading(false);
+            pdfUploadingRef.current = false;
             if (pdfInputRef.current) pdfInputRef.current.value = '';
+        }
+    };
+
+    const handlePdfUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (file.type !== 'application/pdf') { setPdfError('PDF 파일만 업로드할 수 있습니다.'); return; }
+        await uploadQuoteFile(file);
+    };
+
+    const handleQuotePaste = (e) => {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].kind === 'file' && items[i].type.startsWith('image/')) {
+                const file = items[i].getAsFile();
+                if (!file) return;
+                const rawExt = file.type.split('/')[1] || 'png';
+                const ext = rawExt.replace(/[^a-zA-Z0-9]/g, '') || 'png';
+                const renamed = new File([file], `quote-screenshot-${Date.now()}.${ext}`, { type: file.type });
+                e.preventDefault();
+                uploadQuoteFile(renamed);
+                return;
+            }
         }
     };
 
@@ -398,9 +423,15 @@ const ProjectModal = ({
 
                                 {/* 첨부파일 2단 그리드 묶음 */}
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                                    {/* 과거 견적서 PDF */}
-                                    <div style={{ background: 'rgba(16,185,129,0.05)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(16,185,129,0.15)' }}>
-                                        <h4 style={{ margin: '0 0 0.75rem 0', color: '#10b981', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><FileText size={14} /> 과거 견적서 PDF</h4>
+                                    {/* 견적서 */}
+                                    <div
+                                        tabIndex={0}
+                                        onPaste={handleQuotePaste}
+                                        style={{ background: 'rgba(16,185,129,0.05)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(16,185,129,0.15)', outline: 'none' }}
+                                        onFocus={e => { e.currentTarget.style.border = '1px solid rgba(16,185,129,0.5)'; e.currentTarget.style.boxShadow = '0 0 0 2px rgba(16,185,129,0.15)'; }}
+                                        onBlur={e => { e.currentTarget.style.border = '1px solid rgba(16,185,129,0.15)'; e.currentTarget.style.boxShadow = 'none'; }}
+                                    >
+                                        <h4 style={{ margin: '0 0 0.75rem 0', color: '#10b981', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><FileText size={14} /> 견적서</h4>
                                         {formData.quotePdfUrl && (
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.65rem', background: 'rgba(16,185,129,0.08)', padding: '0.45rem 0.7rem', borderRadius: '8px' }}>
                                                 <FileText size={13} color="#10b981" />
@@ -421,6 +452,9 @@ const ProjectModal = ({
                                                 </a>
                                             )}
                                         </div>
+                                        <p style={{ margin: '0.5rem 0 0', fontSize: '0.7rem', color: '#10b981', opacity: 0.75, textAlign: 'center' }}>
+                                            💡 이 영역을 클릭한 뒤 <b>Ctrl+V</b>로 스크린샷을 바로 붙여넣을 수 있습니다
+                                        </p>
                                         {pdfError && <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.4rem' }}>{pdfError}</p>}
                                     </div>
 
