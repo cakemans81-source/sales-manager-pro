@@ -433,7 +433,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
       customerPhone: firstProject.customerPhone || '',
       representative: firstProject.representative,
       project: mergeConfig.projectName,
-      estimateAmount: Number(mergeConfig.estimateAmount) || 0,
+      estimateAmount: mergeConfig.status === '무상작업' ? 0 : (Number(mergeConfig.estimateAmount) || 0),
       discountAmount: Number(mergeConfig.discountAmount) || 0,
       status: mergeConfig.status,
       date: dateStr,
@@ -613,7 +613,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
     const fullData = {
       ...formData,
       statusDates: updatedStatusDates,
-      estimateAmount: parseInt(formData.estimateAmount) || 0,
+      estimateAmount: formData.status === '무상작업' ? 0 : (parseInt(formData.estimateAmount) || 0),
       discountAmount: parseInt(formData.discountAmount) || 0,
       lastModifiedBy: user.name,
       lastModifiedAt: timestamp,
@@ -750,25 +750,29 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
           return '(주)이루';
         };
 
-        const formattedData = json.map(row => ({
-          company: parseCompany(row['소속사업자']),
-          customer: String(row['고객사'] || '미지정'),
-          representative: String(row['담당자'] || user.name),
-          project: String(row['프로젝트'] || '신규 프로젝트'),
-          status: String(row['상태'] || '견적제출중'),
-          estimateAmount: parseExcelAmount(row['견적금액']),
-          discountAmount: parseExcelAmount(row['인하금액']),
-          date: formatDate(row['날짜']),
-          customerContact: String(row['고객담당자1'] || row['고객담당자'] || ''),
-          customerPosition: String(row['직급1'] || row['직급'] || ''),
-          customerPhone: String(row['연락처1'] || row['연락처'] || ''),
-          customerContact2: String(row['고객담당자2'] || ''),
-          customerPosition2: String(row['직급2'] || ''),
-          customerPhone2: String(row['연락처2'] || ''),
-          notes: String(row['메모'] || ''),
-          lastModifiedBy: user.name,
-          lastModifiedAt: new Date().toLocaleString()
-        }));
+        const formattedData = json.map(row => {
+          const status = String(row['상태'] || '견적제출중');
+          return {
+            company: parseCompany(row['소속사업자']),
+            customer: String(row['고객사'] || '미지정'),
+            representative: String(row['담당자'] || user.name),
+            project: String(row['프로젝트'] || '신규 프로젝트'),
+            status,
+            // 무상작업 행은 견적금액(최초)를 0으로 강제 고정
+            estimateAmount: status === '무상작업' ? 0 : parseExcelAmount(row['견적금액']),
+            discountAmount: parseExcelAmount(row['인하금액']),
+            date: formatDate(row['날짜']),
+            customerContact: String(row['고객담당자1'] || row['고객담당자'] || ''),
+            customerPosition: String(row['직급1'] || row['직급'] || ''),
+            customerPhone: String(row['연락처1'] || row['연락처'] || ''),
+            customerContact2: String(row['고객담당자2'] || ''),
+            customerPosition2: String(row['직급2'] || ''),
+            customerPhone2: String(row['연락처2'] || ''),
+            notes: String(row['메모'] || ''),
+            lastModifiedBy: user.name,
+            lastModifiedAt: new Date().toLocaleString()
+          };
+        });
 
         if (supabase) {
           let { error } = await supabase.from('sales_data').insert(formattedData);
@@ -1014,8 +1018,11 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
   const openEditModal = (item) => {
     if (!canEdit) return;
     setEditingItemId(item.id);
+    const isFreeWork = item.status === '무상작업';
     setFormData({
       ...item,
+      // 무상작업 레코드는 견적금액(최초)를 항상 0으로 표시·편집 고정
+      estimateAmount: isFreeWork ? '0' : (item.estimateAmount ?? ''),
       discountAmount: item.discountAmount || '',
       notes: item.notes || '',
       customerPosition: item.customerPosition || '',

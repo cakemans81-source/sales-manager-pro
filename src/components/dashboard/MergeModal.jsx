@@ -33,6 +33,8 @@ const MergeModal = ({ isOpen, onClose, selectedProjects = [], onConfirm }) => {
     if (!isOpen) return null;
 
     const fmt = v => `₩${Number(v).toLocaleString('ko-KR')}`;
+    // 무상작업이면 통합 견적금액은 0원으로 강제 고정
+    const isFreeWork = form.status === '무상작업';
     const inputStyle = { width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', padding: '0.6rem 0.85rem', color: '#f1f5f9', fontSize: '0.88rem', boxSizing: 'border-box', outline: 'none' };
     const labelStyle = { fontSize: '0.72rem', color: '#94a3b8', fontWeight: '700', display: 'block', marginBottom: '0.35rem' };
 
@@ -84,10 +86,20 @@ const MergeModal = ({ isOpen, onClose, selectedProjects = [], onConfirm }) => {
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                         <div>
-                            <label style={labelStyle}>통합 견적금액</label>
+                            <label style={labelStyle}>
+                                통합 견적금액
+                                {isFreeWork && <span style={{ marginLeft: '0.4rem', color: '#818cf8' }}>무상 · 0원 고정</span>}
+                            </label>
                             <input
-                                value={form.estimateAmount ? Number(form.estimateAmount).toLocaleString('ko-KR') : ''}
-                                onChange={e => setForm(f => ({ ...f, estimateAmount: e.target.value.replace(/[^0-9]/g, '') }))}
+                                value={
+                                    isFreeWork
+                                        ? '0'
+                                        : (form.estimateAmount === '' || form.estimateAmount === null || form.estimateAmount === undefined
+                                            ? ''
+                                            : Number(form.estimateAmount).toLocaleString('ko-KR'))
+                                }
+                                onChange={e => { if (isFreeWork) return; setForm(f => ({ ...f, estimateAmount: e.target.value.replace(/[^0-9]/g, '') })); }}
+                                readOnly={isFreeWork}
                                 style={inputStyle}
                             />
                         </div>
@@ -103,7 +115,10 @@ const MergeModal = ({ isOpen, onClose, selectedProjects = [], onConfirm }) => {
                     </div>
                     <div>
                         <label style={labelStyle}>진행 상태</label>
-                        <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
+                        <select value={form.status} onChange={e => {
+                            const status = e.target.value;
+                            setForm(f => status === '무상작업' ? { ...f, status, estimateAmount: '0' } : { ...f, status });
+                        }}
                             style={{ ...inputStyle, background: '#1e293b' }}>
                             {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
