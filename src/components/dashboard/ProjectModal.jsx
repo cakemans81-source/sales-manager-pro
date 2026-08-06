@@ -268,14 +268,30 @@ const ProjectModal = ({
     };
 
     const formatAmount = (value) => {
-        if (!value) return '';
+        if (value === null || value === undefined || value === '') return '';
         const numericValue = value.toString().replace(/[^0-9]/g, '');
         return numericValue ? Number(numericValue).toLocaleString('ko-KR') : '';
     };
 
+    // 무상작업이면 견적금액 (최초)는 0원으로 강제 고정
+    const isFreeWork = formData.status === '무상작업';
+
     const handleAmountChange = (field, value) => {
+        if (field === 'estimateAmount' && isFreeWork) {
+            setFormData({ ...formData, estimateAmount: '0' });
+            return;
+        }
         const numericValue = value.replace(/[^0-9]/g, '');
         setFormData({ ...formData, [field]: numericValue });
+    };
+
+    const handleStatusChange = (e) => {
+        const status = e.target.value;
+        if (status === '무상작업') {
+            setFormData({ ...formData, status, estimateAmount: '0' });
+        } else {
+            setFormData({ ...formData, status });
+        }
     };
 
     // ── 크로스 오리진 이미지 다운로드 헬퍼 (Supabase Storage URL 등) ──
@@ -568,8 +584,11 @@ const ProjectModal = ({
                             <div>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
                                     <div className="input-group">
-                                        <label>견적금액 (최초)</label>
-                                        <input type="text" className="input-field" value={formatAmount(formData.estimateAmount)} onChange={(e) => handleAmountChange('estimateAmount', e.target.value)} required />
+                                        <label>
+                                            견적금액 (최초)
+                                            {isFreeWork && <span style={{ marginLeft: '0.4rem', fontSize: '0.7rem', color: '#818cf8' }}>무상 · 0원 고정</span>}
+                                        </label>
+                                        <input type="text" className="input-field" value={formatAmount(isFreeWork ? '0' : formData.estimateAmount)} onChange={(e) => handleAmountChange('estimateAmount', e.target.value)} readOnly={isFreeWork} required />
                                     </div>
                                     <div className="input-group">
                                         <label>인하 금액 (최종가)</label>
@@ -579,7 +598,7 @@ const ProjectModal = ({
 
                                 <div className="input-group" style={{ marginBottom: '0.75rem' }}>
                                     <label>현재 진행 상태</label>
-                                    <select className="input-field" value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })}>
+                                    <select className="input-field" value={formData.status} onChange={handleStatusChange}>
                                         <option value="견적제출중">견적제출중</option>
                                         <option value="업체미선정">업체미선정</option>
                                         <option value="착수완료 진행">착수완료 진행</option>
