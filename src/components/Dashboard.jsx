@@ -110,7 +110,8 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
     mailPdfUrl: '',
     finalProductPhotos: [],
     agreementImages: [],
-    taxInvoiceImages: []
+    taxInvoiceImages: [],
+    transactionStatementImages: []
   });
 
   const [editingItemId, setEditingItemId] = useState(null);
@@ -648,11 +649,22 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
         delete payload.mergedInto;      // 병합 전용 필드
         delete payload.isMerged;        // 병합 전용 필드
 
-        const { error } = editingItemId
-          ? await supabase.from('sales_data').update(payload).eq('id', editingItemId)
-          : await supabase.from('sales_data').insert([payload]);
+        const saveRow = (row) => editingItemId
+          ? supabase.from('sales_data').update(row).eq('id', editingItemId)
+          : supabase.from('sales_data').insert([row]);
+        let { error } = await saveRow(payload);
+
+        // transactionStatementImages 컬럼이 DB에 아직 없을 경우 폴백: 해당 필드 제거 후 재시도
+        const isMissingStatementColumn = error && String(error.message || '').includes('transactionStatementImages');
+        if (isMissingStatementColumn) {
+          console.warn('transactionStatementImages 컬럼 없음 → 거래명세서 필드 제거 후 재시도');
+          const { transactionStatementImages, ...fallbackPayload } = payload;
+          ({ error } = await saveRow(fallbackPayload));
+        }
         if (error) throw error;
-        setNotification({ type: 'success', message: '클라우드 동기화 완료!' });
+        setNotification(isMissingStatementColumn
+          ? { type: 'info', message: '저장 완료 (거래명세서는 DB에 transactionStatementImages 컬럼 추가 후 저장됩니다)' }
+          : { type: 'success', message: '클라우드 동기화 완료!' });
         await fetchSalesData();
       } else {
         if (editingItemId) {
@@ -676,7 +688,8 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
           mailPdfUrl: '',
           finalProductPhotos: [],
           agreementImages: [],
-          taxInvoiceImages: []
+          taxInvoiceImages: [],
+          transactionStatementImages: []
         });
       }
     } catch (error) {
@@ -1026,7 +1039,8 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
       mailPdfUrl: '',
       finalProductPhotos: [],
       agreementImages: [],
-      taxInvoiceImages: []
+      taxInvoiceImages: [],
+      transactionStatementImages: []
     });
     setIsModalOpen(true);
   };
@@ -1052,7 +1066,8 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
       mailPdfUrl: item.mailPdfUrl || '',
       finalProductPhotos: item.finalProductPhotos || [],
       agreementImages: item.agreementImages || [],
-      taxInvoiceImages: item.taxInvoiceImages || []
+      taxInvoiceImages: item.taxInvoiceImages || [],
+      transactionStatementImages: item.transactionStatementImages || []
     });
     setIsModalOpen(true);
   }, [canEdit]);
