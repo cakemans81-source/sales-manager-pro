@@ -56,4 +56,4 @@ const StatusDistribution = ({ salesData, onStatusClick }) => {
     );
 };
 
-export default StatusDistribution;
+export default React.memo(StatusDistribution);

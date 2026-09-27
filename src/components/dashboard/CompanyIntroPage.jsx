@@ -1,7 +1,5 @@
 import React, { useRef, useState } from 'react';
 import { X, Upload, Type, Image, Check, ChevronLeft, Download, Sparkles, Trash2, Save, RotateCcw, FileImage } from 'lucide-react';
-import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
 import useCompanyIntroStore from '../../store/companyIntroStore';
 
 // ────────────────────────────────────────────────────────────
@@ -515,6 +513,10 @@ const ExternalDeckEditor = () => {
 
     try {
       setIsExporting(true);
+      const [{ jsPDF }, { default: html2canvas }] = await Promise.all([
+        import('jspdf'),
+        import('html2canvas'),
+      ]);
       const pdf = new jsPDF('l', 'mm', [297, 167.0625]);
       for (let index = 0; index < slides.length; index += 1) {
         const node = exportRefs.current[slides[index].id];

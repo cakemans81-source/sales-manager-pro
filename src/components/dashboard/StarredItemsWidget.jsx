@@ -176,4 +176,4 @@ const StarredItemsWidget = ({ salesData = [], onOpenEdit, user }) => {
     );
 };
 
-export default StarredItemsWidget;
+export default React.memo(StarredItemsWidget);

@@ -163,4 +163,4 @@ const CustomerRevenueChart = ({ salesData, selectedYears }) => {
     );
 };
 
-export default CustomerRevenueChart;
+export default React.memo(CustomerRevenueChart);

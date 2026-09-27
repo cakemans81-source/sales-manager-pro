@@ -140,4 +140,4 @@ const TrendsChart = ({ selectedYears, chartData, setSelectedMonth, years, toggle
     );
 };
 
-export default TrendsChart;
+export default React.memo(TrendsChart);
