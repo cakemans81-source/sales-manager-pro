@@ -9,8 +9,6 @@
         "preview": "vite preview"
     },
     "dependencies": {
-        "@react-three/drei": "^9.122.0",
-        "@react-three/fiber": "^8.18.0",
         "@supabase/supabase-js": "^2.95.3",
         "browser-image-compression": "^2.0.2",
         "exceljs": "^4.4.0",
@@ -22,7 +20,6 @@
         "react-grid-layout": "^1.5.0",
         "react-router-dom": "^7.13.1",
         "recharts": "^2.12.7",
-        "three": "^0.183.1",
         "xlsx": "^0.18.5"
     },
     "devDependencies": {
