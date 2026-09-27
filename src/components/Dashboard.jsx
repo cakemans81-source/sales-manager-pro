@@ -44,7 +44,7 @@ const initialSalesData = [
   { id: 3, customer: '현대자동차', representative: '이영희', customerContact: '박성함', customerPosition: '팀장', customerPhone: '010-3456-7890', project: '자율주행 UI 디자인', status: '완료 마감 대기', estimateAmount: 42000000, discountAmount: 2000000, date: '2025.3.05' },
 ];
 
-const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChangeUserRole, onDeactivateUser, onUpdateUser, companyMode = 'iru' }) => {
+const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChangeUserRole, onDeactivateUser, onUpdateUser, onChangeOwnPassword, companyMode = 'iru' }) => {
   // 회사 필터 헬퍼
   const isGachi = companyMode === 'gachi';
   const companyFilter = (item) => {
@@ -899,61 +899,20 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
       return setNotification({ type: 'error', message: '비밀번호는 4자 이상이어야 합니다.' });
     }
 
-    // ── 4. 현재 비밀번호 검증 ──
-    // user_accounts 테이블에서 현재 사용자의 실제 비밀번호를 확인
-    if (supabase) {
-      try {
-        const { data, error } = await supabase
-          .from('user_accounts')
-          .select('password')
-          .eq('employeeId', user.id)
-          .single();
-
-        if (error) throw error;
-
-        if (!data || data.password !== passwordForm.current) {
-          return setNotification({ type: 'error', message: '현재 비밀번호가 올바르지 않습니다.' });
-        }
-
-        // ── 5. 신규 비밀번호로 업데이트 ──
-        const { error: updateError } = await supabase
-          .from('user_accounts')
-          .update({ password: passwordForm.new })
-          .eq('employeeId', user.id);
-
-        if (updateError) throw updateError;
-
-        // 로컬 users 상태도 동기화
-        if (onUpdateUser) {
-          await onUpdateUser(user.id, { password: passwordForm.new });
-        }
-
-        setNotification({ type: 'success', message: '✅ 비밀번호가 성공적으로 변경되었습니다.' });
-        setPasswordForm({ current: '', new: '', confirm: '' });
-
-      } catch (err) {
-        console.error('비밀번호 변경 오류:', err);
-        setNotification({ type: 'error', message: `변경 실패: ${err.message || '알 수 없는 오류'}` });
+    // ── 4. 현재 비밀번호 검증 + 변경 (서버 smp_change_password 에서 처리) ──
+    if (!supabase || !onChangeOwnPassword) {
+      return setNotification({ type: 'error', message: '비밀번호 변경은 클라우드(Supabase) 연결 시에만 가능합니다.' });
+    }
+    try {
+      const result = await onChangeOwnPassword(passwordForm.current, passwordForm.new);
+      if (!result.success) {
+        return setNotification({ type: 'error', message: result.message });
       }
-    } else {
-      // ── Supabase 미연결: 로컬 users 배열로 검증 ──
-      // App.jsx에서 users 배열을 admin에게만 전달하므로, admin 본인 확인
-      const currentPwMatch = user.password === passwordForm.current;
-      if (!currentPwMatch) {
-        return setNotification({ type: 'error', message: '현재 비밀번호가 올바르지 않습니다.' });
-      }
-
-      if (onUpdateUser) {
-        try {
-          await onUpdateUser(user.id, { password: passwordForm.new });
-          setNotification({ type: 'success', message: '✅ 비밀번호가 성공적으로 변경되었습니다.' });
-          setPasswordForm({ current: '', new: '', confirm: '' });
-        } catch (err) {
-          setNotification({ type: 'error', message: `변경 실패: ${err.message || '알 수 없는 오류'}` });
-        }
-      } else {
-        setNotification({ type: 'error', message: '비밀번호 변경 기능을 사용할 수 없습니다.' });
-      }
+      setNotification({ type: 'success', message: '✅ 비밀번호가 성공적으로 변경되었습니다.' });
+      setPasswordForm({ current: '', new: '', confirm: '' });
+    } catch (err) {
+      console.error('비밀번호 변경 오류:', err);
+      setNotification({ type: 'error', message: `변경 실패: ${err.message || '알 수 없는 오류'}` });
     }
   };
 
