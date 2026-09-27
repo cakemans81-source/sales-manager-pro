@@ -3,7 +3,7 @@ import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import './App.css';
-import { supabase } from './lib/supabase';
+import { supabase, setAuthToken } from './lib/supabase';
 import * as auth from './lib/auth';
 
 const SESSION_KEY = 'smp_session_user';
@@ -21,6 +21,8 @@ const loadSession = () => {
             localStorage.removeItem(SESSION_KEY);
             return null;
         }
+        // 첫 데이터 조회(대시보드)보다 먼저 요청 헤더에 토큰이 실리도록 동기적으로 설정
+        setAuthToken(saved.token);
         return saved;
     } catch {
         return null;
@@ -33,6 +35,7 @@ function App() {
 
     const handleLogout = useCallback(() => {
         auth.logout(user?.token);
+        setAuthToken(null);
         setUser(null);
         setUsers([]);
         localStorage.removeItem(SESSION_KEY);
@@ -52,9 +55,16 @@ function App() {
 
     useEffect(() => { refreshUsers(); }, [refreshUsers]);
 
+    // 복원된 세션이 서버에서 만료됐으면(RLS가 빈 목록만 돌려주므로) 로그아웃해 재로그인 유도
+    useEffect(() => {
+        if (!supabase || !user?.token) return;
+        auth.validateSession().then(valid => { if (valid === false) handleLogout(); });
+    }, [user?.token, handleLogout]);
+
     const handleLogin = async (employeeId, password) => {
         const result = await auth.login(employeeId, password);
         if (result.success) {
+            setAuthToken(result.user.token);
             setUser(result.user);
             localStorage.setItem(SESSION_KEY, JSON.stringify(result.user));
         }

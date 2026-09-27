@@ -72,6 +72,22 @@ export const changePassword = async (token, current, next) => {
     return { success: false, message: messages[res?.reason] || '비밀번호 변경에 실패했습니다.' };
 };
 
+// 현재 요청 헤더의 세션이 유효한지 확인 (네트워크 오류 등 판단 불가 시 null)
+export const validateSession = async () => {
+    if (!supabase) return null;
+    try {
+        const { data, error } = await supabase.rpc('smp_request_role');
+        if (error) return null;
+        return Boolean(data);
+    } catch {
+        return null;
+    }
+};
+
+// 별표 토글: 열람 전용 사용자도 가능하도록 전용 RPC 사용 (sales_data 수정 권한 불필요)
+export const toggleStar = (token, id, starred) =>
+    call('smp_toggle_star', { p_token: token, p_id: id, p_starred: starred });
+
 export const adminListUsers = (token) => call('smp_admin_list_users', { p_token: token });
 export const adminApproveUser = (token, target, role) => call('smp_admin_approve_user', { p_token: token, p_target: target, p_role: role });
 export const adminRejectUser = (token, target) => call('smp_admin_reject_user', { p_token: token, p_target: target });
