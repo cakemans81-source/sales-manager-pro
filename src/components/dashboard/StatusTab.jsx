@@ -115,7 +115,8 @@ const TableRow = memo(({ item, isSelected, onOpen, onToggle, onDelete, userRole,
     const photos = Array.isArray(item.finalProductPhotos) ? item.finalProductPhotos : [];
     const taxInvoices = Array.isArray(item.taxInvoiceImages) ? item.taxInvoiceImages : [];
     const agreements = Array.isArray(item.agreementImages) ? item.agreementImages : [];
-    const hasAnyAttachment = item.quotePdfUrl || item.mailPdfUrl || photos.length > 0 || taxInvoices.length > 0 || agreements.length > 0;
+    const statements = Array.isArray(item.transactionStatementImages) ? item.transactionStatementImages : [];
+    const hasAnyAttachment = item.quotePdfUrl || item.mailPdfUrl || photos.length > 0 || taxInvoices.length > 0 || agreements.length > 0 || statements.length > 0;
     const sc = STATUS_COLORS[item.status] || { bg: 'rgba(99,102,241,0.1)', border: 'rgba(99,102,241,0.3)', text: '#818cf8' };
     const mergedList = Array.isArray(item.mergedProjects) ? item.mergedProjects : [];
 
@@ -291,6 +292,12 @@ const TableRow = memo(({ item, isSelected, onOpen, onToggle, onDelete, userRole,
                                 📋 {agreements.length > 1 ? `합의서 ${agreements.length}장` : '합의서'}
                             </button>
                         )}
+                        {statements.length > 0 && (
+                            <button style={badgeBtn('#c084fc', 'rgba(192,132,252,0.12)', 'rgba(192,132,252,0.35)')}
+                                onClick={() => onShowPhotos(statements, "거래명세서")} title={`거래명세서 ${statements.length}장`}>
+                                📑 {statements.length > 1 ? `명세서 ${statements.length}장` : '명세서'}
+                            </button>
+                        )}
                     </div>
                 ) : (
                     <span style={{ color: '#334155', fontSize: '0.72rem' }}>-</span>
@@ -366,6 +373,10 @@ const TableRow = memo(({ item, isSelected, onOpen, onToggle, onDelete, userRole,
                                         {subAgree.length > 0 && (
                                             <button onClick={e => { e.stopPropagation(); onShowPhotos && onShowPhotos(subAgree, `${sub.project} 합의서`); }}
                                                 style={badgeBtn('#38bdf8', 'rgba(56,189,248,0.12)', 'rgba(56,189,248,0.35)')}>📋 합의서</button>
+                                        )}
+                                        {Array.isArray(sub.transactionStatementImages) && sub.transactionStatementImages.length > 0 && (
+                                            <button onClick={e => { e.stopPropagation(); onShowPhotos && onShowPhotos(sub.transactionStatementImages, `${sub.project} 거래명세서`); }}
+                                                style={badgeBtn('#c084fc', 'rgba(192,132,252,0.12)', 'rgba(192,132,252,0.35)')}>📑 명세서</button>
                                         )}
                                     </div>
                                 </div>

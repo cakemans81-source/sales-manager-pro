@@ -150,3 +150,29 @@ export const deleteTaxInvoiceImage = async (publicUrl) => {
     const filePath = extractFilePath(publicUrl, IMAGE_BUCKET);
     if (filePath) await supabase.storage.from(IMAGE_BUCKET).remove([filePath]).catch(() => { });
 };
+
+// ─────────────────────────────────────────────
+// 거래명세서 업로드 / 삭제
+// ─────────────────────────────────────────────
+export const uploadTransactionStatementImage = async (file, projectId) => {
+    if (!supabase) throw new Error('Supabase가 연결되어 있지 않습니다.');
+    if (!file) throw new Error('업로드할 파일이 없습니다.');
+
+    const timestamp = Date.now();
+    const ext = file.name.split('.').pop().replace(/[^a-zA-Z0-9]/g, '') || 'jpg';
+    const filePath = `transaction-statement/project_${projectId}_${timestamp}_${Math.random().toString(36).slice(2, 7)}.${ext}`;
+
+    const { error } = await supabase.storage
+        .from(IMAGE_BUCKET)
+        .upload(filePath, file, { contentType: file.type, upsert: false });
+
+    if (error) throw error;
+    const { data } = supabase.storage.from(IMAGE_BUCKET).getPublicUrl(filePath);
+    return data.publicUrl;
+};
+
+export const deleteTransactionStatementImage = async (publicUrl) => {
+    if (!supabase || !publicUrl) return;
+    const filePath = extractFilePath(publicUrl, IMAGE_BUCKET);
+    if (filePath) await supabase.storage.from(IMAGE_BUCKET).remove([filePath]).catch(() => { });
+};

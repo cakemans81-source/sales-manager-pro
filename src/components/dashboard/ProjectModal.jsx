@@ -1,11 +1,12 @@
 import React, { useState, useRef } from 'react';
-import { X, Plus, Trash2, Save, Upload, FileText, Loader, Image, LayoutGrid, FileImage, Receipt, Printer } from 'lucide-react';
+import { X, Plus, Trash2, Save, Upload, FileText, Loader, Image, LayoutGrid, FileImage, Receipt, Printer, ClipboardList } from 'lucide-react';
 import DeliveryNoteModal from './DeliveryNoteModal';
 import {
     uploadQuotePDF, uploadMailPDF, deleteMailPDF,
     uploadProductImage, deleteProductImage,
     uploadAgreementImage, deleteAgreementImage,
-    uploadTaxInvoiceImage, deleteTaxInvoiceImage
+    uploadTaxInvoiceImage, deleteTaxInvoiceImage,
+    uploadTransactionStatementImage, deleteTransactionStatementImage
 } from '../../lib/supabaseStorage';
 
 const ProjectModal = ({
@@ -43,6 +44,10 @@ const ProjectModal = ({
     const [taxInvoiceUploading, setTaxInvoiceUploading] = useState(false);
     const [taxInvoiceError, setTaxInvoiceError] = useState('');
     const taxInvoiceInputRef = useRef(null);
+
+    const [statementUploading, setStatementUploading] = useState(false);
+    const [statementError, setStatementError] = useState('');
+    const statementInputRef = useRef(null);
 
     const uploadQuoteFile = async (file) => {
         if (!file || pdfUploadingRef.current) return;
@@ -252,6 +257,58 @@ const ProjectModal = ({
     const handleTaxInvoiceImageRemove = async (url) => {
         await deleteTaxInvoiceImage(url).catch(() => { });
         setFormData(prev => ({ ...prev, taxInvoiceImages: (prev.taxInvoiceImages || []).filter(u => u !== url) }));
+    };
+
+    // ── 거래명세서 ──
+    const statementUploadingRef = useRef(false);
+    const uploadStatementFiles = async (files) => {
+        if (statementUploadingRef.current) return;
+        if (!files.length) return;
+        const invalid = files.find(f => !f.type.startsWith('image/'));
+        if (invalid) { setStatementError('이미지 파일만 업로드할 수 있습니다.'); return; }
+        const oversize = files.find(f => f.size > 20 * 1024 * 1024);
+        if (oversize) { setStatementError('각 파일 크기는 20MB 이하여야 합니다.'); return; }
+        setStatementError('');
+        statementUploadingRef.current = true;
+        setStatementUploading(true);
+        if (statementInputRef.current) statementInputRef.current.value = '';
+        try {
+            const tempId = editingItemId || `new_${Date.now()}`;
+            const urls = await Promise.all(files.map(f => uploadTransactionStatementImage(f, tempId)));
+            setFormData(prev => {
+                const existing = new Set(prev.transactionStatementImages || []);
+                const newUrls = urls.filter(u => !existing.has(u));
+                return { ...prev, transactionStatementImages: [...(prev.transactionStatementImages || []), ...newUrls] };
+            });
+        } catch (err) {
+            setStatementError(`업로드 실패: ${err.message || '알 수 없는 오류'}`);
+        } finally {
+            setStatementUploading(false);
+            statementUploadingRef.current = false;
+        }
+    };
+    const handleStatementImagesUpload = (e) => uploadStatementFiles(Array.from(e.target.files));
+
+    const handleStatementPaste = (e) => {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].kind === 'file' && items[i].type.startsWith('image/')) {
+                const file = items[i].getAsFile();
+                if (!file) return;
+                const rawExt = file.type.split('/')[1] || 'png';
+                const ext = rawExt.replace(/[^a-zA-Z0-9]/g, '') || 'png';
+                const renamed = new File([file], `transaction-statement-screenshot-${Date.now()}.${ext}`, { type: file.type });
+                e.preventDefault();
+                uploadStatementFiles([renamed]);
+                return;
+            }
+        }
+    };
+
+    const handleStatementImageRemove = async (url) => {
+        await deleteTransactionStatementImage(url).catch(() => { });
+        setFormData(prev => ({ ...prev, transactionStatementImages: (prev.transactionStatementImages || []).filter(u => u !== url) }));
     };
 
     const handleDateChange = (status, value) => {
@@ -561,6 +618,29 @@ const ProjectModal = ({
                                             💡 이 영역을 클릭한 뒤 <b>Ctrl+V</b>로 스크린샷을 바로 붙여넣을 수 있습니다
                                         </p>
                                         {taxInvoiceError && <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.4rem' }}>{taxInvoiceError}</p>}
+                                    </div>
+
+                                    {/* 거래명세서 (스캔본/스크린샷, 전체 너비 사용) */}
+                                    <div
+                                        tabIndex={0}
+                                        onPaste={handleStatementPaste}
+                                        style={{ background: 'rgba(192,132,252,0.05)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(192,132,252,0.15)', outline: 'none', gridColumn: '1 / -1' }}
+                                        onFocus={e => { e.currentTarget.style.border = '1px solid rgba(192,132,252,0.5)'; e.currentTarget.style.boxShadow = '0 0 0 2px rgba(192,132,252,0.15)'; }}
+                                        onBlur={e => { e.currentTarget.style.border = '1px solid rgba(192,132,252,0.15)'; e.currentTarget.style.boxShadow = 'none'; }}
+                                    >
+                                        <h4 style={{ margin: '0 0 0.75rem 0', color: '#c084fc', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><ClipboardList size={14} /> 거래명세서 <span style={{ fontSize: '0.7rem', color: '#f5f5f5', fontWeight: 'normal' }}>(스캔본·스크린샷, PNG·JPG 최대 20MB)</span></h4>
+                                        {renderImageGrid(formData.transactionStatementImages, handleStatementImageRemove, '#c084fc', '거래명세서')}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                            <input ref={statementInputRef} type="file" accept="image/png,image/jpeg,image/jpg" multiple style={{ display: 'none' }} onChange={handleStatementImagesUpload} />
+                                            <button type="button" onClick={() => statementInputRef.current && statementInputRef.current.click()} disabled={statementUploading}
+                                                style={{ flex: 1, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(192,132,252,0.15)', border: '1px solid rgba(192,132,252,0.4)', color: '#c084fc', borderRadius: '8px', padding: '0.45rem 0.5rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600' }}>
+                                                {statementUploading ? <><Loader size={12} style={{ animation: 'spin 1s linear infinite' }} /> 업로드 중...</> : <><Plus size={13} /> 사진 업로드</>}
+                                            </button>
+                                        </div>
+                                        <p style={{ margin: '0.5rem 0 0', fontSize: '0.7rem', color: '#c084fc', opacity: 0.75, textAlign: 'center' }}>
+                                            💡 이 영역을 클릭한 뒤 <b>Ctrl+V</b>로 스캔본·스크린샷을 바로 붙여넣을 수 있습니다
+                                        </p>
+                                        {statementError && <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.4rem' }}>{statementError}</p>}
                                     </div>
 
                                     {/* 최종 제품 사진 (전체 너비 사용) */}
