@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { LogIn, ShieldCheck, User, Lock, UserPlus, ArrowLeft, CheckCircle2 } from 'lucide-react';
-import { isActiveUser } from '../utils/userStatus';
 
-const Login = ({ onLogin, onSignup, users }) => {
+const Login = ({ onLogin, onSignup }) => {
   const [isSignupMode, setIsSignupMode] = useState(false);
   const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
@@ -11,34 +10,31 @@ const Login = ({ onLogin, onSignup, users }) => {
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
-  const handleLogin = (e) => {
+  // 비밀번호 검증은 서버(smp_login)에서만 수행
+  const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
-    setTimeout(() => {
-      const foundUser = users.find(u => u.id === userId && u.password === password);
-
-      if (foundUser) {
-        if (foundUser.isApproved === true && isActiveUser(foundUser)) {
-          onLogin(foundUser);
-        } else {
-          setError('승인되지 않았거나 비활성화된 계정입니다.');
-        }
-      } else {
-        setError('아이디 또는 비밀번호가 일치하지 않습니다.');
+    try {
+      const result = await onLogin(userId, password);
+      if (!result.success) {
+        setError(result.message);
+        setIsLoading(false);
       }
+    } catch (err) {
+      setError(err.message || '로그인 중 오류가 발생했습니다.');
       setIsLoading(false);
-    }, 600);
+    }
   };
 
-  const handleSignupSubmit = (e) => {
+  const handleSignupSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
-    setTimeout(() => {
-      const result = onSignup({ id: userId, password, name });
+    try {
+      const result = await onSignup({ id: userId, password, name });
       if (result.success) {
         setSuccessMessage(result.message);
         // 필드 초기화
@@ -48,8 +44,11 @@ const Login = ({ onLogin, onSignup, users }) => {
       } else {
         setError(result.message);
       }
+    } catch (err) {
+      setError(err.message || '가입 신청 중 오류가 발생했습니다.');
+    } finally {
       setIsLoading(false);
-    }, 600);
+    }
   };
 
   if (successMessage) {

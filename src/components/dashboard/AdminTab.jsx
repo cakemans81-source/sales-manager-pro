@@ -144,7 +144,8 @@ const AdminTab = ({
                             <button className="btn btn-primary" onClick={async () => {
                                 const newName = document.getElementById('edit-user-name').value;
                                 try {
-                                    await onUpdateUser(editingUser.id, { name: newName, password: passwordForm.new || editingUser.password });
+                                    // 비밀번호 칸이 비어 있으면 기존 비밀번호 유지 (서버에서 처리)
+                                    await onUpdateUser(editingUser.id, { name: newName, password: passwordForm.new || null });
                                     setNotification({ type: 'success', message: `${editingUser.name} 사용자 정보가 클라우드에 업데이트되었습니다.` });
                                     setEditingUser(null);
                                 } catch (err) {

@@ -1,170 +1,92 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import './App.css';
 import { supabase } from './lib/supabase';
-import { isActiveUser } from './utils/userStatus';
+import * as auth from './lib/auth';
 
-const DEFAULT_ADMIN = { id: 'admin', password: '@skw208025', name: '대표님', role: 'admin', status: 'active', isApproved: true };
+const SESSION_KEY = 'smp_session_user';
 
-const normalizeUser = (account) => (
-    account?.id === 'admin' && !account.status
-        ? { ...account, status: 'active' }
-        : account
-);
+// 예전 버전이 비밀번호를 포함한 사용자 목록을 브라우저에 캐시하던 키 → 로드 시 제거
+['smp_users_cache', 'smp_users'].forEach(key => {
+    try { localStorage.removeItem(key); } catch { /* 저장소 접근 불가 시 무시 */ }
+});
 
-function App() {
-    const [user, setUser] = useState(() => {
-        try {
-            const saved = localStorage.getItem('smp_session_user');
-            return saved ? JSON.parse(saved) : null;
-        } catch {
+const loadSession = () => {
+    try {
+        const saved = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+        // 서버 세션 토큰이 없는 예전 세션(비밀번호 포함 가능)은 폐기하고 재로그인 요구
+        if (!saved || (supabase && !saved.token) || 'password' in saved) {
+            localStorage.removeItem(SESSION_KEY);
             return null;
         }
-    });
-    const [users, setUsers] = useState(() => {
-        try {
-            const saved = localStorage.getItem('smp_users_cache');
-            return saved ? JSON.parse(saved).map(normalizeUser) : [DEFAULT_ADMIN];
-        } catch {
-            return [DEFAULT_ADMIN];
-        }
-    });
+        return saved;
+    } catch {
+        return null;
+    }
+};
 
-    // 초기 데이터 로드 및 Supabase 동기화
-    useEffect(() => {
-        const fetchUsers = async () => {
-            if (!supabase) {
-                const savedUsers = localStorage.getItem('smp_users');
-                if (savedUsers) setUsers(JSON.parse(savedUsers));
-                return;
-            }
+function App() {
+    const [user, setUser] = useState(loadSession);
+    const [users, setUsers] = useState([]);
 
-            const { data, error } = await supabase.from('user_accounts').select('*');
-            if (!error && data && data.length > 0) {
-                // employeeId를 id로 매핑 (기존 로직 호환)
-                const mapped = data.map(u => ({
-                    ...u,
-                    id: u.employeeId
-                })).map(normalizeUser);
-                // 어드민은 항상 포함 (보안책)
-                if (!mapped.find(u => u.id === 'admin')) {
-                    mapped.push(DEFAULT_ADMIN);
-                }
-                setUsers(mapped);
-                localStorage.setItem('smp_users_cache', JSON.stringify(mapped));
-            }
-        };
-        fetchUsers();
-    }, []);
-
-    useEffect(() => {
-        localStorage.setItem('smp_users_cache', JSON.stringify(users));
-        if (!supabase) {
-            localStorage.setItem('smp_users', JSON.stringify(users));
-        }
-    }, [users]);
-
-    const handleLogin = (userData) => {
-        setUser(userData);
-        localStorage.setItem('smp_session_user', JSON.stringify(userData));
-    };
-
-    const handleLogout = () => {
+    const handleLogout = useCallback(() => {
+        auth.logout(user?.token);
         setUser(null);
-        localStorage.removeItem('smp_session_user');
+        setUsers([]);
+        localStorage.removeItem(SESSION_KEY);
+    }, [user?.token]);
+
+    // 관리자 전용: 사용자 목록은 서버에서 비밀번호 없이 받아온다
+    const refreshUsers = useCallback(async () => {
+        if (!supabase || user?.role !== 'admin' || !user?.token) return;
+        try {
+            const list = await auth.adminListUsers(user.token);
+            setUsers(Array.isArray(list) ? list : []);
+        } catch (err) {
+            if (auth.isSessionExpiredError(err)) handleLogout();
+            else console.error('사용자 목록 조회 실패:', err);
+        }
+    }, [user?.role, user?.token, handleLogout]);
+
+    useEffect(() => { refreshUsers(); }, [refreshUsers]);
+
+    const handleLogin = async (employeeId, password) => {
+        const result = await auth.login(employeeId, password);
+        if (result.success) {
+            setUser(result.user);
+            localStorage.setItem(SESSION_KEY, JSON.stringify(result.user));
+        }
+        return result;
     };
 
-    const handleSignup = async (newUser) => {
-        if (users.find(u => u.id === newUser.id)) {
-            return { success: false, message: '이미 존재하는 아이디입니다.' };
+    const handleSignup = (newUser) => auth.signup(newUser);
+
+    // 관리자 작업 공통 처리: 실행 후 목록 갱신, 세션 만료 시 로그아웃
+    const runAdmin = async (fn) => {
+        try {
+            const result = await fn(user.token);
+            await refreshUsers();
+            return result;
+        } catch (err) {
+            if (auth.isSessionExpiredError(err)) handleLogout();
+            throw err;
         }
-
-        const userToRegister = {
-            employeeId: newUser.id,
-            password: newUser.password,
-            name: newUser.name,
-            role: 'viewer',
-            status: 'pending',
-            isApproved: false
-        };
-
-        if (supabase) {
-            const { error } = await supabase.from('user_accounts').insert([userToRegister]);
-            if (error) return { success: false, message: '클라우드 저장 실패: ' + error.message };
-        }
-
-        setUsers([...users, { ...userToRegister, id: newUser.id }]);
-        return { success: true, message: '가입 신청이 완료되었습니다. 관리자 승인 후 로그인 가능합니다.' };
     };
 
-    const handleApproveUser = async (userId, role) => {
-        if (supabase) {
-            await supabase.from('user_accounts').update({ isApproved: true, role: role, status: 'active' }).eq('employeeId', userId);
-        }
-        setUsers(users.map(u => u.id === userId ? { ...u, isApproved: true, role: role || u.role, status: 'active' } : u));
-    };
+    const handleApproveUser = (userId, role) => runAdmin(token => auth.adminApproveUser(token, userId, role || 'viewer'));
+    const handleRejectUser = (userId) => runAdmin(token => auth.adminRejectUser(token, userId));
+    const handleChangeUserRole = (userId, newRole) => runAdmin(token => auth.adminChangeRole(token, userId, newRole));
+    const handleDeactivateUser = (userId) => runAdmin(token => auth.adminDeactivateUser(token, userId));
+    const handleUpdateUser = (userId, updatedData) =>
+        runAdmin(token => auth.adminUpdateUser(token, userId, updatedData.name, updatedData.password));
 
-    const handleRejectUser = async (userId) => {
-        if (supabase) {
-            await supabase.from('user_accounts').delete().eq('employeeId', userId);
-        }
-        setUsers(users.filter(u => u.id !== userId));
-    };
-
-    const handleChangeUserRole = async (userId, newRole) => {
-        if (supabase) {
-            await supabase.from('user_accounts').update({ role: newRole }).eq('employeeId', userId);
-        }
-        setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
-    };
-
-    const handleDeactivateUser = async (userId) => {
-        const targetUser = users.find(u => u.id === userId);
-        if (!targetUser) return { success: false, message: '사용자를 찾을 수 없습니다.' };
-        if (userId === user?.id) return { success: false, message: '현재 로그인한 본인 계정은 삭제할 수 없습니다.' };
-
-        const activeAdminCount = users.filter(u => (
-            u.role === 'admin' &&
-            u.isApproved === true &&
-            isActiveUser(u)
-        )).length;
-
-        if (
-            targetUser.role === 'admin' &&
-            targetUser.isApproved === true &&
-            isActiveUser(targetUser) &&
-            activeAdminCount <= 1
-        ) {
-            return { success: false, message: '마지막 관리자는 삭제할 수 없습니다.' };
-        }
-
-        if (supabase) {
-            const { error } = await supabase
-                .from('user_accounts')
-                .update({ status: 'inactive', isApproved: false })
-                .eq('employeeId', userId);
-            if (error) throw error;
-        }
-
-        setUsers(users.map(u => (
-            u.id === userId
-                ? { ...u, status: 'inactive', isApproved: false }
-                : u
-        )));
-        return { success: true, message: '사용자가 삭제 처리되었습니다. 기존 프로젝트 기록은 유지됩니다.' };
-    };
-
-    const handleUpdateUser = async (userId, updatedData) => {
-        if (supabase) {
-            const { error } = await supabase.from('user_accounts').update({
-                name: updatedData.name,
-                password: updatedData.password
-            }).eq('employeeId', userId);
-            if (error) throw error;
-        }
-        setUsers(users.map(u => u.id === userId ? { ...u, ...updatedData } : u));
+    // 본인 비밀번호 변경 (현재 비밀번호는 서버에서 검증)
+    const handleChangeOwnPassword = async (current, next) => {
+        const result = await auth.changePassword(user.token, current, next);
+        if (!result.success && result.message.includes('SESSION_EXPIRED')) handleLogout();
+        return result;
     };
 
     return (
@@ -174,7 +96,6 @@ function App() {
                     <Login
                         onLogin={handleLogin}
                         onSignup={handleSignup}
-                        users={users}
                     />
                 ) : (
                     (() => {
@@ -187,6 +108,7 @@ function App() {
                             onChangeUserRole: handleChangeUserRole,
                             onDeactivateUser: handleDeactivateUser,
                             onUpdateUser: handleUpdateUser,
+                            onChangeOwnPassword: handleChangeOwnPassword,
                         };
                         return (
                             <Routes>
