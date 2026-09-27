@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useTransition, useCallback, lazy, Suspense } from 'react';
 import { Plus, Check, AlertCircle, Database, Menu, Star, GitMerge } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { toggleStar } from '../lib/auth';
 
 import './Dashboard.css';
 
@@ -1041,13 +1042,13 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
       if (supabase) {
         const target = updated.find(i => i.id === id);
         if (target) {
-          supabase.from('sales_data').update({ is_starred: target.isStarred }).eq('id', id)
-            .then(({ error }) => { if (error) console.warn('Supabase star sync:', error.message); });
+          toggleStar(user.token, id, target.isStarred)
+            .catch(error => console.warn('Supabase star sync:', error.message));
         }
       }
       return updated;
     });
-  }, []);
+  }, [user.token]);
 
   // 이미지 압축 유틸리티 함수
   const compressImageForExport = async (base64Str) => {

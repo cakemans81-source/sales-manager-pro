@@ -322,7 +322,7 @@ const TableRow = memo(({ item, isSelected, onOpen, onToggle, onDelete, userRole,
                         <span style={{ fontSize: '0.7rem', color: '#818cf8', fontWeight: '700' }}>
                             병합된 원본 프로젝트 ({mergedList.length}건)
                         </span>
-                        {onUnmerge && (
+                        {onUnmerge && userRole === 'admin' && (
                             <button
                                 onClick={e => { e.stopPropagation(); onUnmerge(item.id); }}
                                 style={{
