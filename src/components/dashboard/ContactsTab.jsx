@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { UserPlus, UserMinus, UserCheck, Search, Building, Phone, Briefcase, User, FileSpreadsheet, Upload, Download, Users, RefreshCw } from 'lucide-react';
-import * as XLSX from 'xlsx';
 
 const ContactsTab = ({ canEdit, supabase, fetchContactsData, contactsData, setNotification, salesData = [], onSyncContact }) => {
     const [isAddMode, setIsAddMode] = useState(false);
@@ -31,7 +30,8 @@ const ContactsTab = ({ canEdit, supabase, fetchContactsData, contactsData, setNo
         ).length;
     };
 
-    const downloadTemplate = () => {
+    const downloadTemplate = async () => {
+        const XLSX = await import('xlsx');
         const templateData = [
             { "성함": "홍길동", "고객사": "삼성전자", "소속팀": "디스플레이사업부", "직급": "책임연구원", "연락처": "010-1234-5678" }
         ];
@@ -52,6 +52,7 @@ const ContactsTab = ({ canEdit, supabase, fetchContactsData, contactsData, setNo
         reader.onload = async (event) => {
             try {
                 const data = new Uint8Array(event.target.result);
+                const XLSX = await import('xlsx');
                 const workbook = XLSX.read(data, { type: 'array' });
                 const firstSheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[firstSheetName];

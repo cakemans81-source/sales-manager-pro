@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Save, Trash2, Download, Upload, Plus, FileText, Info, Sparkles, Check, ChevronDown, Printer } from 'lucide-react';
-import * as XLSX from 'xlsx';
 
 const QuotationHelperTab = ({ user }) => {
     // 🧠 견적 지식 베이스 (품목 정보)
@@ -30,9 +29,10 @@ const QuotationHelperTab = ({ user }) => {
         const file = e.target.files[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.onload = (event) => {
+        reader.onload = async (event) => {
             try {
                 const data = new Uint8Array(event.target.result);
+                const XLSX = await import('xlsx');
                 const workbook = XLSX.read(data, { type: 'array' });
                 const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
 
@@ -55,7 +55,8 @@ const QuotationHelperTab = ({ user }) => {
         reader.readAsArrayBuffer(file);
     };
 
-    const downloadTemplate = () => {
+    const downloadTemplate = async () => {
+        const XLSX = await import('xlsx');
         const template = [
             { '품목명': '기본 사양 서버', '규격': 'CPU 16Core / RAM 64GB', '단가': 5000000, '프로젝트명': '예시 프로젝트 A' }
         ];
