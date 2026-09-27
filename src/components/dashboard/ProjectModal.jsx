@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { X, Plus, Trash2, Save, Upload, FileText, Loader, Image, LayoutGrid, FileImage, Receipt, Printer, ClipboardList } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { X, Plus, Trash2, Save, Upload, FileText, Loader, Image, LayoutGrid, FileImage, Receipt, Printer, ClipboardList, FolderOpen } from 'lucide-react';
 import DeliveryNoteModal from './DeliveryNoteModal';
 import {
     uploadQuotePDF, uploadMailPDF, deleteMailPDF,
@@ -8,6 +8,7 @@ import {
     uploadTaxInvoiceImage, deleteTaxInvoiceImage,
     uploadTransactionStatementImage, deleteTransactionStatementImage
 } from '../../lib/supabaseStorage';
+import { openOneDriveFolder, ONEDRIVE_EXPLORER_HINT } from '../../lib/onedrive';
 
 const ProjectModal = ({
     editingItemId,
@@ -91,8 +92,7 @@ const ProjectModal = ({
         }
     };
 
-    const handleMailPdfUpload = async (e) => {
-        const file = e.target.files[0];
+    const uploadMailFile = async (file) => {
         if (!file) return;
         if (file.type !== 'application/pdf') { setMailError('PDF 파일만 업로드할 수 있습니다.'); return; }
         if (file.size > 20 * 1024 * 1024) { setMailError('파일 크기는 20MB 이하여야 합니다.'); return; }
@@ -108,6 +108,7 @@ const ProjectModal = ({
             if (mailPdfRef.current) mailPdfRef.current.value = '';
         }
     };
+    const handleMailPdfUpload = (e) => uploadMailFile(e.target.files[0]);
 
     const handleMailPdfRemove = async () => {
         if (formData.mailPdfUrl) await deleteMailPDF(formData.mailPdfUrl).catch(() => { });
@@ -116,9 +117,8 @@ const ProjectModal = ({
 
     // ── 중복 방지: 업로드 중 플래그로 동시 호출 차단 ──
     const photoUploadingRef = useRef(false);
-    const handleProductPhotosUpload = async (e) => {
+    const uploadProductFiles = async (files) => {
         if (photoUploadingRef.current) return; // 중복 실행 차단
-        const files = Array.from(e.target.files);
         if (!files.length) return;
         const invalid = files.find(f => !f.type.startsWith('image/'));
         if (invalid) { setPhotoError('이미지 파일만 업로드할 수 있습니다.'); return; }
@@ -145,6 +145,7 @@ const ProjectModal = ({
             photoUploadingRef.current = false;
         }
     };
+    const handleProductPhotosUpload = (e) => uploadProductFiles(Array.from(e.target.files));
 
     const handleProductPhotoRemove = async (url) => {
         await deleteProductImage(url).catch(() => { });
@@ -371,6 +372,73 @@ const ProjectModal = ({
     };
 
     // ── 공통: 이미지 그리드 렌더러 ──
+    // ── 끌어다 놓기 (윈도우 탐색기의 OneDrive 동기화 폴더 → 각 업로드 칸) ──
+    const [dragKey, setDragKey] = useState(null);
+    const dragDepth = useRef({});
+    const hasFiles = (e) => Array.from(e.dataTransfer?.types || []).includes('Files');
+
+    // 칸 밖에 떨어뜨려도 브라우저가 파일을 열어 작성 중인 내용이 사라지지 않도록 차단
+    useEffect(() => {
+        const block = (e) => { if (hasFiles(e)) e.preventDefault(); };
+        const reset = () => { dragDepth.current = {}; setDragKey(null); };
+        window.addEventListener('dragover', block);
+        window.addEventListener('drop', block);
+        window.addEventListener('drop', reset);
+        window.addEventListener('dragend', reset);
+        return () => {
+            window.removeEventListener('dragover', block);
+            window.removeEventListener('drop', block);
+            window.removeEventListener('drop', reset);
+            window.removeEventListener('dragend', reset);
+        };
+    }, []);
+
+    const dropZone = (key, onFiles) => ({
+        onDragEnter: (e) => {
+            if (!hasFiles(e)) return;
+            e.preventDefault();
+            dragDepth.current[key] = (dragDepth.current[key] || 0) + 1;
+            setDragKey(key);
+        },
+        onDragOver: (e) => {
+            if (!hasFiles(e)) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+        },
+        onDragLeave: (e) => {
+            if (!hasFiles(e)) return;
+            dragDepth.current[key] = Math.max(0, (dragDepth.current[key] || 1) - 1);
+            if (!dragDepth.current[key]) setDragKey(k => (k === key ? null : k));
+        },
+        onDrop: (e) => {
+            if (!hasFiles(e)) return;
+            e.preventDefault();
+            e.stopPropagation();
+            dragDepth.current = {};
+            setDragKey(null);
+            const files = Array.from(e.dataTransfer.files || []);
+            if (files.length) onFiles(files);
+        },
+    });
+
+    const renderDropOverlay = (key, rgb, label) => dragKey === key && (
+        <div style={{ position: 'absolute', inset: 0, borderRadius: '12px', border: `2px dashed rgb(${rgb})`, background: `linear-gradient(rgba(${rgb},0.22), rgba(${rgb},0.22)), rgba(15,23,42,0.94)`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: `rgb(${rgb})`, fontWeight: '800', fontSize: '0.85rem', pointerEvents: 'none', zIndex: 2 }}>
+            📥 여기에 놓으면 {label} 업로드
+        </div>
+    );
+
+    // 견적서·메일 PDF는 한 파일만 저장되므로 여러 개를 놓으면 안내
+    const handleQuoteDrop = (files) => {
+        if (files.length > 1) { setPdfError('견적서는 한 파일만 올릴 수 있습니다. 파일 하나만 끌어다 놓아 주세요.'); return; }
+        const file = files[0];
+        if (file.type !== 'application/pdf' && !file.type.startsWith('image/')) { setPdfError('PDF 또는 이미지 파일만 업로드할 수 있습니다.'); return; }
+        uploadQuoteFile(file);
+    };
+    const handleMailDrop = (files) => {
+        if (files.length > 1) { setMailError('메일 PDF는 한 파일만 올릴 수 있습니다. 파일 하나만 끌어다 놓아 주세요.'); return; }
+        uploadMailFile(files[0]);
+    };
+
     const renderImageGrid = (photos, onRemove, accentColor, prefix) => {
         if (!photos || photos.length === 0) return null;
         return (
@@ -511,16 +579,29 @@ const ProjectModal = ({
                                     {contactsData.map(c => (<option key={c.id} value={c.name}>{c.customer} - {c.position}</option>))}
                                 </datalist>
 
+                                {/* 공용 OneDrive(SharePoint) 견적자료 폴더 열기 + 끌어다 놓기 안내 */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', margin: '0.25rem 0 0.6rem', padding: '0.6rem 0.8rem', borderRadius: '10px', background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.2)' }}>
+                                    <button type="button" onClick={openOneDriveFolder}
+                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: 'rgba(56,189,248,0.15)', border: '1px solid rgba(56,189,248,0.45)', color: '#38bdf8', borderRadius: '8px', padding: '0.4rem 0.75rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '700' }}>
+                                        <FolderOpen size={14} /> OneDrive 견적자료 폴더 열기
+                                    </button>
+                                    <span style={{ fontSize: '0.7rem', color: '#94a3b8', flex: 1, minWidth: '220px' }}>
+                                        윈도우 탐색기의 <b style={{ color: '#cbd5e1' }}>{ONEDRIVE_EXPLORER_HINT}</b> 에서 파일을 아래 각 칸으로 끌어다 놓으면 업로드됩니다
+                                    </span>
+                                </div>
+
                                 {/* 첨부파일 2단 그리드 묶음 */}
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                                     {/* 견적서 */}
                                     <div
                                         tabIndex={0}
                                         onPaste={handleQuotePaste}
-                                        style={{ background: 'rgba(16,185,129,0.05)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(16,185,129,0.15)', outline: 'none' }}
+                                        {...dropZone('quote', handleQuoteDrop)}
+                                        style={{ position: 'relative', background: 'rgba(16,185,129,0.05)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(16,185,129,0.15)', outline: 'none' }}
                                         onFocus={e => { e.currentTarget.style.border = '1px solid rgba(16,185,129,0.5)'; e.currentTarget.style.boxShadow = '0 0 0 2px rgba(16,185,129,0.15)'; }}
                                         onBlur={e => { e.currentTarget.style.border = '1px solid rgba(16,185,129,0.15)'; e.currentTarget.style.boxShadow = 'none'; }}
                                     >
+                                        {renderDropOverlay('quote', '16,185,129', '견적서')}
                                         <h4 style={{ margin: '0 0 0.75rem 0', color: '#10b981', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><FileText size={14} /> 견적서</h4>
                                         {formData.quotePdfUrl && (
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.65rem', background: 'rgba(16,185,129,0.08)', padding: '0.45rem 0.7rem', borderRadius: '8px' }}>
@@ -549,7 +630,8 @@ const ProjectModal = ({
                                     </div>
 
                                     {/* 메일 내용 PDF */}
-                                    <div style={{ background: 'rgba(99,102,241,0.05)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(99,102,241,0.15)' }}>
+                                    <div {...dropZone('mail', handleMailDrop)} style={{ position: 'relative', background: 'rgba(99,102,241,0.05)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(99,102,241,0.15)' }}>
+                                        {renderDropOverlay('mail', '129,140,248', '메일 PDF')}
                                         <h4 style={{ margin: '0 0 0.75rem 0', color: '#818cf8', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><FileText size={14} /> 메일 내용 PDF</h4>
                                         {formData.mailPdfUrl && (
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.65rem', background: 'rgba(99,102,241,0.08)', padding: '0.45rem 0.7rem', borderRadius: '8px' }}>
@@ -578,10 +660,12 @@ const ProjectModal = ({
                                     <div
                                         tabIndex={0}
                                         onPaste={handleAgreementPaste}
-                                        style={{ background: 'rgba(14,165,233,0.05)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(14,165,233,0.15)', outline: 'none' }}
+                                        {...dropZone('agreement', uploadAgreementFiles)}
+                                        style={{ position: 'relative', background: 'rgba(14,165,233,0.05)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(14,165,233,0.15)', outline: 'none' }}
                                         onFocus={e => { e.currentTarget.style.border = '1px solid rgba(14,165,233,0.5)'; e.currentTarget.style.boxShadow = '0 0 0 2px rgba(14,165,233,0.15)'; }}
                                         onBlur={e => { e.currentTarget.style.border = '1px solid rgba(14,165,233,0.15)'; e.currentTarget.style.boxShadow = 'none'; }}
                                     >
+                                        {renderDropOverlay('agreement', '14,165,233', '견적 합의서')}
                                         <h4 style={{ margin: '0 0 0.75rem 0', color: '#0ea5e9', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><FileImage size={14} /> 견적 합의서 이미지</h4>
                                         {renderImageGrid(formData.agreementImages, handleAgreementImageRemove, '#0ea5e9', '합의서')}
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -601,10 +685,12 @@ const ProjectModal = ({
                                     <div
                                         tabIndex={0}
                                         onPaste={handleTaxInvoicePaste}
-                                        style={{ background: 'rgba(52,211,153,0.05)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(52,211,153,0.15)', outline: 'none' }}
+                                        {...dropZone('tax', uploadTaxInvoiceFiles)}
+                                        style={{ position: 'relative', background: 'rgba(52,211,153,0.05)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(52,211,153,0.15)', outline: 'none' }}
                                         onFocus={e => { e.currentTarget.style.border = '1px solid rgba(52,211,153,0.5)'; e.currentTarget.style.boxShadow = '0 0 0 2px rgba(52,211,153,0.15)'; }}
                                         onBlur={e => { e.currentTarget.style.border = '1px solid rgba(52,211,153,0.15)'; e.currentTarget.style.boxShadow = 'none'; }}
                                     >
+                                        {renderDropOverlay('tax', '52,211,153', '세금계산서')}
                                         <h4 style={{ margin: '0 0 0.75rem 0', color: '#34d399', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Receipt size={14} /> 세금계산서</h4>
                                         {renderImageGrid(formData.taxInvoiceImages, handleTaxInvoiceImageRemove, '#34d399', '세금계산서')}
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -624,10 +710,12 @@ const ProjectModal = ({
                                     <div
                                         tabIndex={0}
                                         onPaste={handleStatementPaste}
-                                        style={{ background: 'rgba(192,132,252,0.05)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(192,132,252,0.15)', outline: 'none', gridColumn: '1 / -1' }}
+                                        {...dropZone('statement', uploadStatementFiles)}
+                                        style={{ position: 'relative', background: 'rgba(192,132,252,0.05)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(192,132,252,0.15)', outline: 'none', gridColumn: '1 / -1' }}
                                         onFocus={e => { e.currentTarget.style.border = '1px solid rgba(192,132,252,0.5)'; e.currentTarget.style.boxShadow = '0 0 0 2px rgba(192,132,252,0.15)'; }}
                                         onBlur={e => { e.currentTarget.style.border = '1px solid rgba(192,132,252,0.15)'; e.currentTarget.style.boxShadow = 'none'; }}
                                     >
+                                        {renderDropOverlay('statement', '192,132,252', '거래명세서')}
                                         <h4 style={{ margin: '0 0 0.75rem 0', color: '#c084fc', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><ClipboardList size={14} /> 거래명세서 <span style={{ fontSize: '0.7rem', color: '#f5f5f5', fontWeight: 'normal' }}>(스캔본·스크린샷, PNG·JPG 최대 20MB)</span></h4>
                                         {renderImageGrid(formData.transactionStatementImages, handleStatementImageRemove, '#c084fc', '거래명세서')}
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -644,7 +732,8 @@ const ProjectModal = ({
                                     </div>
 
                                     {/* 최종 제품 사진 (전체 너비 사용) */}
-                                    <div style={{ background: 'rgba(245,158,11,0.05)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(245,158,11,0.15)', gridColumn: '1 / -1' }}>
+                                    <div {...dropZone('photo', uploadProductFiles)} style={{ position: 'relative', background: 'rgba(245,158,11,0.05)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(245,158,11,0.15)', gridColumn: '1 / -1' }}>
+                                        {renderDropOverlay('photo', '245,158,11', '완성 사진')}
                                         <h4 style={{ margin: '0 0 0.75rem 0', color: '#f59e0b', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><LayoutGrid size={14} /> 최종 제품 사진 <span style={{ fontSize: '0.7rem', color: '#f5f5f5', fontWeight: 'normal' }}>(PNG·JPG 최대 20MB)</span></h4>
                                         {renderImageGrid(formData.finalProductPhotos, handleProductPhotoRemove, '#f59e0b', '제품사진')}
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
