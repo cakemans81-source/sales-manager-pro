@@ -166,4 +166,4 @@ const ZeroEstimateWarning = ({ salesData, onEdit }) => {
     );
 };
 
-export default ZeroEstimateWarning;
+export default React.memo(ZeroEstimateWarning);

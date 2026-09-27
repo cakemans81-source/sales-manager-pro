@@ -22,4 +22,4 @@ const ActivityLog = ({ salesData }) => {
     );
 };
 
-export default ActivityLog;
+export default React.memo(ActivityLog);

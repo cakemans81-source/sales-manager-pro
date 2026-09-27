@@ -1,12 +1,6 @@
-import React, { useState, useEffect, useMemo, useTransition, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useTransition, useCallback, lazy, Suspense } from 'react';
 import { Plus, Check, AlertCircle, Database, Menu, Star, GitMerge } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import * as XLSX from 'xlsx';
-import ExcelJS from 'exceljs';
-import imageCompression from 'browser-image-compression';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import html2canvas from 'html2canvas';
 
 import './Dashboard.css';
 
@@ -17,18 +11,20 @@ import StatusDistribution from './dashboard/StatusDistribution';
 import ActivityLog from './dashboard/ActivityLog';
 import TrendsChart from './dashboard/TrendsChart';
 import StatusTab from './dashboard/StatusTab';
-import AdminTab from './dashboard/AdminTab';
-import SettingsTab from './dashboard/SettingsTab';
-import ProjectModal from './dashboard/ProjectModal';
 import PDFReportTemplate from './dashboard/PDFReportTemplate';
-import KanbanTab from './dashboard/KanbanTab';
 import CustomerRevenueChart from './dashboard/CustomerRevenueChart';
-import QuotationHelperTab from './dashboard/QuotationHelperTab';
-import ContactsTab from './dashboard/ContactsTab';
 import ZeroEstimateWarning from './dashboard/ZeroEstimateWarning';
 import StarredItemsWidget from './dashboard/StarredItemsWidget';
-import CompanyIntroPage from './dashboard/CompanyIntroPage';
 import MergeModal from './dashboard/MergeModal';
+
+// 첫 화면에 필요 없는 탭/모달은 사용할 때 로드 (초기 번들 축소)
+const AdminTab = lazy(() => import('./dashboard/AdminTab'));
+const SettingsTab = lazy(() => import('./dashboard/SettingsTab'));
+const ProjectModal = lazy(() => import('./dashboard/ProjectModal'));
+const KanbanTab = lazy(() => import('./dashboard/KanbanTab'));
+const QuotationHelperTab = lazy(() => import('./dashboard/QuotationHelperTab'));
+const ContactsTab = lazy(() => import('./dashboard/ContactsTab'));
+const CompanyIntroPage = lazy(() => import('./dashboard/CompanyIntroPage'));
 import { formatDate, getTodayFormatted } from '../lib/dateUtils';
 import { GripVertical, Lock, Unlock } from 'lucide-react';
 
@@ -37,6 +33,10 @@ import '/node_modules/react-grid-layout/css/styles.css';
 import '/node_modules/react-resizable/css/styles.css';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
+
+// 렌더마다 새로 만들지 않도록 모듈 상수로 유지 (memo된 차트 props 안정화)
+const years = [2022, 2023, 2024, 2025, 2026];
+const yearColors = { '2022': '#94a3b8', '2023': '#10b981', '2024': '#f59e0b', '2025': '#6366f1', '2026': '#ec4899' };
 
 const initialSalesData = [
   { id: 1, customer: '삼성전자', representative: '김철수', customerContact: '이민준', customerPosition: '책임연구원', customerPhone: '010-1234-5678', project: 'AI 차세대 엔진 구축', status: '완료 마감 대기', estimateAmount: 55000000, discountAmount: 5000000, date: '2025.1.15' },
@@ -184,8 +184,6 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
     }
   };
 
-  const years = [2022, 2023, 2024, 2025, 2026];
-  const yearColors = { '2022': '#94a3b8', '2023': '#10b981', '2024': '#f59e0b', '2025': '#6366f1', '2026': '#ec4899' };
 
   useEffect(() => { localStorage.setItem('smp_sales_data', JSON.stringify(salesData)); }, [salesData]);
   useEffect(() => { localStorage.setItem('smp_config', JSON.stringify(config)); }, [config]);
@@ -254,7 +252,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
     fetchContactsData();
   }, []);
 
-  const toggleYear = (year) => {
+  const toggleYear = useCallback((year) => {
     setSelectedYears(prev => {
       if (prev.includes(year)) {
         if (prev.length === 1) return prev;
@@ -264,7 +262,9 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
       return [...prev, year].sort();
     });
     setSelectedMonth(null);
-  };
+  }, []);
+
+  const goToKanban = useCallback(() => setActiveTab('kanban'), []);
 
   const chartData = useMemo(() => {
     const months = Array.from({ length: 12 }, (_, i) => {
@@ -291,6 +291,20 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
     });
     return selectedYears.length === 1 ? months.map(m => ({ name: m.name, sales: m[selectedYears[0]] })) : months;
   }, [companySalesData, selectedYears]);
+
+  const yearTotals = useMemo(() => {
+    const totals = {};
+    if (selectedYears.length === 1) {
+      // 단일 연도: chartData는 { name, sales } 구조
+      totals[selectedYears[0]] = chartData.reduce((sum, m) => sum + (m.sales || 0), 0);
+    } else {
+      // 멀티 연도: chartData는 { name, 2022: X, 2026: Y } 구조
+      selectedYears.forEach(y => {
+        totals[y] = chartData.reduce((sum, m) => sum + (m[y] || 0), 0);
+      });
+    }
+    return totals;
+  }, [chartData, selectedYears]);
 
   // ── 날짜 파싱: '2026.1.15' → Date 객체 (비교용) ──
   const parseItemDate = (dateStr) => {
@@ -728,6 +742,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
     reader.onload = async (event) => {
       try {
         const data = new Uint8Array(event.target.result);
+        const XLSX = await import('xlsx');
         const workbook = XLSX.read(data, { type: 'array', cellDates: true });
         const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
 
@@ -806,7 +821,8 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
     reader.readAsArrayBuffer(file);
   };
 
-  const downloadTemplate = () => {
+  const downloadTemplate = async () => {
+    const XLSX = await import('xlsx');
     const templateData = [
       {
         '소속사업자': '(주)이루',
@@ -1015,7 +1031,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
     setIsModalOpen(true);
   };
 
-  const openEditModal = (item) => {
+  const openEditModal = useCallback((item) => {
     if (!canEdit) return;
     setEditingItemId(item.id);
     const isFreeWork = item.status === '무상작업';
@@ -1039,7 +1055,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
       taxInvoiceImages: item.taxInvoiceImages || []
     });
     setIsModalOpen(true);
-  };
+  }, [canEdit]);
 
   // ── 별표 토글 (isStarred) ──
   const handleToggleStar = useCallback(async (id) => {
@@ -1074,6 +1090,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
         useWebWorker: true,
       };
 
+      const { default: imageCompression } = await import('browser-image-compression');
       const compressedFile = await imageCompression(file, options);
       return new Promise((resolve) => {
         const reader = new FileReader();
@@ -1126,6 +1143,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
         return [{ ...item, _rowKind: 'normal' }];
       });
 
+      const { default: ExcelJS } = await import('exceljs');
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('Selected_Projects');
 
@@ -1406,6 +1424,10 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
       }
 
       // ── 3단계: PDF 렌더링 (이미 로드된 base64Font 재사용) ──
+      const [{ jsPDF }, { default: autoTable }] = await Promise.all([
+        import('jspdf'),
+        import('jspdf-autotable'),
+      ]);
       const doc = new jsPDF('l', 'mm', 'a4');
       if (fontLoaded && base64Font) {
         doc.addFileToVFS(FONT_FILE, base64Font);
@@ -1660,7 +1682,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
                       <span className="edit-guide-text">이동 및 크기 조절 중...</span>
                     </div>
                   )}
-                  <StatusDistribution salesData={companySalesData} onStatusClick={() => setActiveTab('kanban')} />
+                  <StatusDistribution salesData={companySalesData} onStatusClick={goToKanban} />
                 </div>
               </div>
               <div key="activity">
@@ -1689,19 +1711,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
                   <TrendsChart
                     selectedYears={selectedYears} chartData={chartData} setSelectedMonth={setSelectedMonth}
                     years={years} toggleYear={toggleYear} yearColors={yearColors}
-                    yearTotals={(() => {
-                      const totals = {};
-                      if (selectedYears.length === 1) {
-                        // 단일 연도: chartData는 { name, sales } 구조
-                        totals[selectedYears[0]] = chartData.reduce((sum, m) => sum + (m.sales || 0), 0);
-                      } else {
-                        // 멀티 연도: chartData는 { name, 2022: X, 2026: Y } 구조
-                        selectedYears.forEach(y => {
-                          totals[y] = chartData.reduce((sum, m) => sum + (m[y] || 0), 0);
-                        });
-                      }
-                      return totals;
-                    })()}
+                    yearTotals={yearTotals}
                   />
                 </div>
               </div>
@@ -1735,6 +1745,7 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
           </div>
         )}
 
+        <Suspense fallback={null}>
         {activeTab === 'kanban' && (
           <KanbanTab
             salesData={sortedAndFilteredData.filter(companyFilter)}
@@ -1943,16 +1954,19 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
         {activeTab === 'company_intro' && (
           <CompanyIntroPage />
         )}
+        </Suspense>
       </main >
 
       {isModalOpen && (
-        <ProjectModal
-          editingItemId={editingItemId} setIsModalOpen={setIsModalOpen} setEditingItemId={setEditingItemId}
-          handleAddData={(e) => { e.preventDefault(); processDataSave(true); }} formData={formData} setFormData={setFormData}
-          handleFileChange={handleFileChange} user={user} handleDeleteItem={handleDeleteItem}
-          isSaving={isSaving} processDataSave={processDataSave}
-          contactsData={contactsData}
-        />
+        <Suspense fallback={null}>
+          <ProjectModal
+            editingItemId={editingItemId} setIsModalOpen={setIsModalOpen} setEditingItemId={setEditingItemId}
+            handleAddData={(e) => { e.preventDefault(); processDataSave(true); }} formData={formData} setFormData={setFormData}
+            handleFileChange={handleFileChange} user={user} handleDeleteItem={handleDeleteItem}
+            isSaving={isSaving} processDataSave={processDataSave}
+            contactsData={contactsData}
+          />
+        </Suspense>
       )}
 
       <MergeModal
