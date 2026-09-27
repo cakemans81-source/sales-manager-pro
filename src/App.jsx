@@ -8,8 +8,8 @@ import * as auth from './lib/auth';
 
 const SESSION_KEY = 'smp_session_user';
 
-// 예전 버전이 비밀번호를 포함한 사용자 목록을 브라우저에 캐시하던 키 → 로드 시 제거
-['smp_users_cache', 'smp_users'].forEach(key => {
+// 예전 버전이 남긴 키 제거: 비밀번호 포함 사용자 캐시, 삭제된 회사소개서 편집기 데이터
+['smp_users_cache', 'smp_users', 'smp_company_intro_external_deck_v1'].forEach(key => {
     try { localStorage.removeItem(key); } catch { /* 저장소 접근 불가 시 무시 */ }
 });
 

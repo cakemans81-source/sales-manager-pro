@@ -14,7 +14,6 @@
         "@supabase/supabase-js": "^2.95.3",
         "browser-image-compression": "^2.0.2",
         "exceljs": "^4.4.0",
-        "html2canvas": "^1.4.1",
         "jspdf": "^4.1.0",
         "jspdf-autotable": "^5.0.7",
         "lucide-react": "^0.446.0",
@@ -24,8 +23,7 @@
         "react-router-dom": "^7.13.1",
         "recharts": "^2.12.7",
         "three": "^0.183.1",
-        "xlsx": "^0.18.5",
-        "zustand": "^5.0.12"
+        "xlsx": "^0.18.5"
     },
     "devDependencies": {
         "@fontsource/noto-sans-kr": "^5.2.9",

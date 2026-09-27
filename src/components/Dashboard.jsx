@@ -25,7 +25,6 @@ const ProjectModal = lazy(() => import('./dashboard/ProjectModal'));
 const KanbanTab = lazy(() => import('./dashboard/KanbanTab'));
 const QuotationHelperTab = lazy(() => import('./dashboard/QuotationHelperTab'));
 const ContactsTab = lazy(() => import('./dashboard/ContactsTab'));
-const CompanyIntroPage = lazy(() => import('./dashboard/CompanyIntroPage'));
 import { formatDate, getTodayFormatted } from '../lib/dateUtils';
 import { GripVertical, Lock, Unlock } from 'lucide-react';
 
@@ -1926,9 +1925,6 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
           />
         )}
 
-        {activeTab === 'company_intro' && (
-          <CompanyIntroPage />
-        )}
         </Suspense>
       </main >
 
