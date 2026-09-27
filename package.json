@@ -9,6 +9,7 @@
         "preview": "vite preview"
     },
     "dependencies": {
+        "@azure/msal-browser": "^5.23.0",
         "@supabase/supabase-js": "^2.95.3",
         "browser-image-compression": "^2.0.2",
         "exceljs": "^4.4.0",

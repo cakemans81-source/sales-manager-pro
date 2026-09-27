@@ -8,7 +8,7 @@ import {
     uploadTaxInvoiceImage, deleteTaxInvoiceImage,
     uploadTransactionStatementImage, deleteTransactionStatementImage
 } from '../../lib/supabaseStorage';
-import { openOneDriveFolder, ONEDRIVE_EXPLORER_HINT } from '../../lib/onedrive';
+import { ONEDRIVE_EXPLORER_HINT } from '../../lib/onedrive';
 
 const ProjectModal = ({
     editingItemId,
@@ -439,6 +439,66 @@ const ProjectModal = ({
         uploadMailFile(files[0]);
     };
 
+    // ── OneDrive(SharePoint) 파일 선택 창에서 가져오기 → 각 칸의 기존 Supabase 업로드 함수로 전달 ──
+    const [msBusy, setMsBusy] = useState(null);
+    const [msNotice, setMsNotice] = useState('');
+    const [msPicked, setMsPicked] = useState(null); // OneDrive에서 받아온 File[] (넣을 칸 선택 대기)
+    const ONEDRIVE_ZONES = [
+        { key: 'quote', label: '견적서', color: '#10b981', rgb: '16,185,129', onFiles: handleQuoteDrop, setError: setPdfError, single: true, accepts: (f) => f.type === 'application/pdf' || f.type.startsWith('image/') },
+        { key: 'mail', label: '메일 PDF', color: '#818cf8', rgb: '129,140,248', onFiles: handleMailDrop, setError: setMailError, single: true, accepts: (f) => f.type === 'application/pdf' },
+        { key: 'agreement', label: '견적 합의서', color: '#0ea5e9', rgb: '14,165,233', onFiles: uploadAgreementFiles, setError: setAgreementError, accepts: (f) => f.type.startsWith('image/') },
+        { key: 'tax', label: '세금계산서', color: '#34d399', rgb: '52,211,153', onFiles: uploadTaxInvoiceFiles, setError: setTaxInvoiceError, accepts: (f) => f.type.startsWith('image/') },
+        { key: 'statement', label: '거래명세서', color: '#c084fc', rgb: '192,132,252', onFiles: uploadStatementFiles, setError: setStatementError, accepts: (f) => f.type.startsWith('image/') },
+        { key: 'photo', label: '완성 사진', color: '#f59e0b', rgb: '245,158,11', onFiles: uploadProductFiles, setError: setPhotoError, accepts: (f) => f.type.startsWith('image/') },
+    ];
+    const zoneAvailable = (zone, files) => files.length > 0 && (!zone.single || files.length === 1) && files.every(zone.accepts);
+
+    // 모달이 열릴 때 Microsoft 로그인 라이브러리를 미리 불러둔다.
+    // (클릭 뒤에 불러오며 기다리면 일부 브라우저가 로그인·선택 팝업을 차단함)
+    const msPickerRef = useRef(null);
+    useEffect(() => {
+        let alive = true;
+        import('../../lib/msPicker')
+            .then((mod) => mod.preloadMs().then(() => { if (alive) msPickerRef.current = mod; }))
+            .catch((err) => console.warn('OneDrive 연결 준비 실패:', err));
+        return () => { alive = false; };
+    }, []);
+
+    // 팝업 차단을 피하려고 이 함수는 await 없이 곧바로 로그인/선택 창을 연다
+    const importFromOneDrive = () => {
+        if (msBusy) return;
+        setMsNotice('');
+        setMsPicked(null);
+        const picker = msPickerRef.current;
+        if (!picker) {
+            setMsNotice('OneDrive 연결을 준비 중입니다. 잠시 후 다시 눌러주세요.');
+            return;
+        }
+        setMsBusy(true);
+        // 처음 한 번은 Microsoft 로그인 (브라우저는 한 번의 클릭에 팝업 하나만 허용)
+        const task = picker.isMsSignedIn()
+            ? picker.pickFromOneDrive({ title: '첨부할 파일 선택', filters: ['.pdf', '.png', '.jpg', '.jpeg'], multiple: true })
+                .then((files) => { if (files.length) setMsPicked(files); })
+            : picker.msLogin()
+                .then(() => setMsNotice('✅ Microsoft 로그인 완료. 버튼을 한 번 더 누르면 파일 선택 창이 열립니다.'));
+        task
+            .catch((err) => {
+                if (err?.code === 'MS_LOGIN_REQUIRED') {
+                    setMsNotice('Microsoft 로그인이 필요합니다. 버튼을 한 번 더 눌러 로그인해 주세요.');
+                } else if (err?.errorCode !== 'user_cancelled') {
+                    setMsNotice(`⚠️ OneDrive에서 가져오기 실패: ${err?.message || '알 수 없는 오류'}`);
+                }
+            })
+            .finally(() => setMsBusy(false));
+    };
+
+    const sendPickedTo = (zone) => {
+        const files = msPicked || [];
+        setMsPicked(null);
+        zone.setError('');
+        zone.onFiles(files);
+    };
+
     const renderImageGrid = (photos, onRemove, accentColor, prefix) => {
         if (!photos || photos.length === 0) return null;
         return (
@@ -581,13 +641,38 @@ const ProjectModal = ({
 
                                 {/* 공용 OneDrive(SharePoint) 견적자료 폴더 열기 + 끌어다 놓기 안내 */}
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', margin: '0.25rem 0 0.6rem', padding: '0.6rem 0.8rem', borderRadius: '10px', background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.2)' }}>
-                                    <button type="button" onClick={openOneDriveFolder}
-                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: 'rgba(56,189,248,0.15)', border: '1px solid rgba(56,189,248,0.45)', color: '#38bdf8', borderRadius: '8px', padding: '0.4rem 0.75rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '700' }}>
-                                        <FolderOpen size={14} /> OneDrive 견적자료 폴더 열기
+                                    <button type="button" onClick={importFromOneDrive} disabled={msBusy}
+                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: 'rgba(56,189,248,0.15)', border: '1px solid rgba(56,189,248,0.45)', color: '#38bdf8', borderRadius: '8px', padding: '0.4rem 0.75rem', cursor: msBusy ? 'wait' : 'pointer', fontSize: '0.75rem', fontWeight: '700', whiteSpace: 'nowrap' }}>
+                                        {msBusy ? <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <FolderOpen size={14} />} OneDrive 견적자료에서 가져오기
                                     </button>
                                     <span style={{ fontSize: '0.7rem', color: '#94a3b8', flex: 1, minWidth: '220px' }}>
-                                        윈도우 탐색기의 <b style={{ color: '#cbd5e1' }}>{ONEDRIVE_EXPLORER_HINT}</b> 에서 파일을 아래 각 칸으로 끌어다 놓으면 업로드됩니다
+                                        윈도우 탐색기의 <b style={{ color: '#cbd5e1' }}>{ONEDRIVE_EXPLORER_HINT}</b> 에서 파일을 아래 각 칸으로 끌어다 놓거나, 왼쪽 버튼으로 OneDrive에서 골라 넣을 칸을 지정할 수 있습니다
                                     </span>
+                                    {msNotice && <span style={{ flexBasis: '100%', fontSize: '0.72rem', color: msNotice.startsWith('⚠️') ? '#f87171' : '#38bdf8', fontWeight: '600' }}>{msNotice}</span>}
+                                    {msPicked && (
+                                        <div style={{ flexBasis: '100%', marginTop: '0.2rem', padding: '0.6rem 0.7rem', borderRadius: '8px', background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(56,189,248,0.3)' }}>
+                                            <div style={{ fontSize: '0.72rem', color: '#cbd5e1', marginBottom: '0.45rem' }}>
+                                                <b style={{ color: '#38bdf8' }}>가져온 파일 {msPicked.length}개</b> — {msPicked.map(f => f.name).join(', ')}
+                                            </div>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
+                                                <span style={{ fontSize: '0.72rem', color: '#94a3b8', marginRight: '0.2rem' }}>넣을 칸 선택:</span>
+                                                {ONEDRIVE_ZONES.map(zone => {
+                                                    const ok = zoneAvailable(zone, msPicked);
+                                                    return (
+                                                        <button key={zone.key} type="button" disabled={!ok} onClick={() => sendPickedTo(zone)}
+                                                            title={ok ? `${zone.label} 칸에 업로드` : (zone.single && msPicked.length > 1 ? '이 칸은 파일 1개만 올릴 수 있습니다' : '이 칸에 맞지 않는 파일 형식이 포함돼 있습니다')}
+                                                            style={{ background: ok ? `rgba(${zone.rgb},0.15)` : 'transparent', border: `1px solid rgba(${zone.rgb},${ok ? 0.5 : 0.2})`, color: ok ? zone.color : '#475569', borderRadius: '6px', padding: '0.3rem 0.6rem', fontSize: '0.72rem', fontWeight: '700', cursor: ok ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap' }}>
+                                                            {zone.label}
+                                                        </button>
+                                                    );
+                                                })}
+                                                <button type="button" onClick={() => setMsPicked(null)}
+                                                    style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '0.72rem', cursor: 'pointer', marginLeft: 'auto' }}>
+                                                    취소
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* 첨부파일 2단 그리드 묶음 */}
@@ -613,7 +698,7 @@ const ProjectModal = ({
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                                             <input ref={pdfInputRef} type="file" accept="application/pdf" style={{ display: 'none' }} onChange={handlePdfUpload} />
                                             <button type="button" onClick={() => pdfInputRef.current && pdfInputRef.current.click()} disabled={pdfUploading}
-                                                style={{ flex: 1, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.4)', color: '#10b981', borderRadius: '8px', padding: '0.45rem 0.5rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600' }}>
+                                                style={{ flex: 1, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.4)', color: '#10b981', borderRadius: '8px', padding: '0.45rem 0.5rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600', whiteSpace: 'nowrap' }}>
                                                 {pdfUploading ? <><Loader size={12} style={{ animation: 'spin 1s linear infinite' }} /> 업로드 중...</> : <><Upload size={13} /> 업로드</>}
                                             </button>
                                             {formData.quotePdfUrl && (
@@ -643,7 +728,7 @@ const ProjectModal = ({
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                                             <input ref={mailPdfRef} type="file" accept="application/pdf" style={{ display: 'none' }} onChange={handleMailPdfUpload} />
                                             <button type="button" onClick={() => mailPdfRef.current && mailPdfRef.current.click()} disabled={mailUploading}
-                                                style={{ flex: 1, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.4)', color: '#818cf8', borderRadius: '8px', padding: '0.45rem 0.5rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600' }}>
+                                                style={{ flex: 1, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.4)', color: '#818cf8', borderRadius: '8px', padding: '0.45rem 0.5rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600', whiteSpace: 'nowrap' }}>
                                                 {mailUploading ? <><Loader size={12} style={{ animation: 'spin 1s linear infinite' }} /> 업로드 중...</> : <><Upload size={13} /> 업로드</>}
                                             </button>
                                             {formData.mailPdfUrl && (
@@ -671,7 +756,7 @@ const ProjectModal = ({
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                                             <input ref={agreementInputRef} type="file" accept="image/png,image/jpeg,image/jpg" multiple style={{ display: 'none' }} onChange={handleAgreementImagesUpload} />
                                             <button type="button" onClick={() => agreementInputRef.current && agreementInputRef.current.click()} disabled={agreementUploading}
-                                                style={{ flex: 1, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(14,165,233,0.15)', border: '1px solid rgba(14,165,233,0.4)', color: '#0ea5e9', borderRadius: '8px', padding: '0.45rem 0.5rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600' }}>
+                                                style={{ flex: 1, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(14,165,233,0.15)', border: '1px solid rgba(14,165,233,0.4)', color: '#0ea5e9', borderRadius: '8px', padding: '0.45rem 0.5rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600', whiteSpace: 'nowrap' }}>
                                                 {agreementUploading ? <><Loader size={12} style={{ animation: 'spin 1s linear infinite' }} /> 업로드 중...</> : <><Plus size={13} /> 사진 업로드</>}
                                             </button>
                                         </div>
@@ -696,7 +781,7 @@ const ProjectModal = ({
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                                             <input ref={taxInvoiceInputRef} type="file" accept="image/png,image/jpeg,image/jpg" multiple style={{ display: 'none' }} onChange={handleTaxInvoiceImagesUpload} />
                                             <button type="button" onClick={() => taxInvoiceInputRef.current && taxInvoiceInputRef.current.click()} disabled={taxInvoiceUploading}
-                                                style={{ flex: 1, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(52,211,153,0.15)', border: '1px solid rgba(52,211,153,0.4)', color: '#34d399', borderRadius: '8px', padding: '0.45rem 0.5rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600' }}>
+                                                style={{ flex: 1, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(52,211,153,0.15)', border: '1px solid rgba(52,211,153,0.4)', color: '#34d399', borderRadius: '8px', padding: '0.45rem 0.5rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600', whiteSpace: 'nowrap' }}>
                                                 {taxInvoiceUploading ? <><Loader size={12} style={{ animation: 'spin 1s linear infinite' }} /> 업로드 중...</> : <><Plus size={13} /> 사진 업로드</>}
                                             </button>
                                         </div>
@@ -721,7 +806,7 @@ const ProjectModal = ({
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                                             <input ref={statementInputRef} type="file" accept="image/png,image/jpeg,image/jpg" multiple style={{ display: 'none' }} onChange={handleStatementImagesUpload} />
                                             <button type="button" onClick={() => statementInputRef.current && statementInputRef.current.click()} disabled={statementUploading}
-                                                style={{ flex: 1, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(192,132,252,0.15)', border: '1px solid rgba(192,132,252,0.4)', color: '#c084fc', borderRadius: '8px', padding: '0.45rem 0.5rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600' }}>
+                                                style={{ flex: 1, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(192,132,252,0.15)', border: '1px solid rgba(192,132,252,0.4)', color: '#c084fc', borderRadius: '8px', padding: '0.45rem 0.5rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600', whiteSpace: 'nowrap' }}>
                                                 {statementUploading ? <><Loader size={12} style={{ animation: 'spin 1s linear infinite' }} /> 업로드 중...</> : <><Plus size={13} /> 사진 업로드</>}
                                             </button>
                                         </div>
