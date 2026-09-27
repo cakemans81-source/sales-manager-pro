@@ -1513,17 +1513,21 @@ const Dashboard = ({ user, onLogout, users, onApproveUser, onRejectUser, onChang
               <Menu size={20} /> <span>메뉴</span>
             </button>
             <div>
-              <h2>{activeTab === 'dashboard' ? `반갑습니다, ${user.name} 👋` :
-                activeTab === 'kanban' ? '작전 단계별 상황판' :
-                  activeTab === 'quotation' ? '견적서 작성 도우미' :
-                    activeTab === 'status' ? `${companyName} 프로젝트 통합 현황` :
-                      activeTab === 'estimates' ? `${companyName} 견적서 제출 현황` :
-                        activeTab === 'pending' ? `${companyName} 업체 미선정 현황` :
-                          activeTab === 'commencement' ? `${companyName} 착수 완료 현황` :
-                            activeTab === 'closing' ? `${companyName} 완료 마감 대기 현황` :
-                              activeTab === 'tax_invoice' ? `${companyName} 세금계산서 발행 완료` :
-                                activeTab === 'collection' ? `${companyName} 수금 완료 현황` :
-                                  activeTab === 'admin' ? '사용 인원 관리' : '시스템 설정'}</h2>
+              <h2>{{
+                dashboard: `반갑습니다, ${user.name} 👋`,
+                kanban: '작전 단계별 상황판',
+                quotation: '견적서 작성 도우미',
+                status: `${companyName} 프로젝트 통합 현황`,
+                estimates: `${companyName} 견적서 제출 현황`,
+                pending: `${companyName} 업체 미선정 현황`,
+                commencement: `${companyName} 착수 완료 현황`,
+                closing: `${companyName} 완료 마감 대기 현황`,
+                tax_invoice: `${companyName} 세금계산서 발행 완료`,
+                collection: `${companyName} 수금 완료 현황`,
+                contacts: '고객사 담당자 관리',
+                admin: '사용 인원 관리',
+                settings: '시스템 설정',
+              }[activeTab] || '시스템 설정'}</h2>
               <p>{activeTab === 'dashboard' ? '오늘의 주요 작전 보고를 확인하세요.' : '데이터 기반의 정밀한 관리를 시작합니다.'}</p>
               {/* 버튼: 제목 아래 좌측 정렬 */}
               <div style={{ display: 'flex', gap: '0.6rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
