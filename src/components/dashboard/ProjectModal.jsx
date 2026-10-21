@@ -780,7 +780,7 @@ const ProjectModal = ({
 
                                 <div className="input-group" style={{ marginBottom: '0.75rem' }}>
                                     <label>작전 기록 및 팀 코멘트 (Timeline)</label>
-                                    <textarea className="input-field" style={{ minHeight: '90px', resize: 'vertical' }}
+                                    <textarea className="input-field" style={{ minHeight: '180px', resize: 'vertical' }}
                                         value={formData.notes || ''}
                                         onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                                         placeholder="프로젝트 진행 상황이나 주요 변경 사항을 기록하세요..." />
